@@ -1,6 +1,6 @@
 # Open Semantic Agent (OSA)
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24417032.svg)](https://doi.org/10.5281/zenodo.24417032) [![PyPI](https://img.shields.io/pypi/v/open-semantic-agent)](https://pypi.org/project/open-semantic-agent/) [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16976/badge)](https://www.bestpractices.dev/projects/16976) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24417032.svg)](https://doi.org/10.5281/zenodo.24417032) [![PyPI](https://img.shields.io/pypi/v/open-semantic-agent)](https://pypi.org/project/open-semantic-agent/) [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **An open spec for publish/subscribe that routes messages by what they mean.**
 
