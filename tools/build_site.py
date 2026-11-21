@@ -152,7 +152,7 @@ Questions or concerns: open an issue at [{repo}]({repo}/issues).
 
 def readme_table():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    m = re.search(r"^\| Conventional broker.*?(?=\n\n)", readme, re.S | re.M)
+    m = re.search(r"^\| Conventional broker.*?(?=\n\n)", readme, re.DOTALL | re.MULTILINE)
     return markdown.markdown(m.group(0), extensions=["tables"]) if m else ""
 
 
