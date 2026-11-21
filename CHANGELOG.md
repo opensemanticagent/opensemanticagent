@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- MCP tool annotations are written out on each tool, so static scanners (M8ven) can read them. Same values, same behavior.
+
 ## 0.2.3 (package), 2026-11-21
 - OpenSSF Best Practices passing badge (project 16976).
 - CI runs ruff (lint and security checks) and CodeQL; workflows default to a read-only token; CONTRIBUTING requires tests for new behavior.
