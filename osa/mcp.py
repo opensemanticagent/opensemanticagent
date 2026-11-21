@@ -14,32 +14,38 @@ import sys
 from . import SPEC_VERSION, __version__, spec
 
 PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"]
-READ_ONLY = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
 _KINDS = {"type": "string", "enum": list(spec.SCHEMA_NAMES)}
 
 TOOLS = [
-    {"name": "osa_list_sections", "annotations": READ_ONLY,
+    {"name": "osa_list_sections",
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
      "description": "List the sections of the OSA specification with their ids (for example 6.3 or A.2) and titles.",
      "inputSchema": {"type": "object", "properties": {}}},
-    {"name": "osa_get_section", "annotations": READ_ONLY,
+    {"name": "osa_get_section",
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
      "description": "Return the text of one spec section, by id (\"6.3\", \"§9.3\", \"A.1\") or by a word from its title.",
      "inputSchema": {"type": "object", "required": ["section"], "properties": {"section": {"type": "string"}}}},
-    {"name": "osa_search_spec", "annotations": READ_ONLY,
+    {"name": "osa_search_spec",
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
      "description": "Find lines in the spec that contain a phrase, with the section each one is in.",
      "inputSchema": {"type": "object", "required": ["query"],
                      "properties": {"query": {"type": "string"},
                                     "limit": {"type": "integer", "minimum": 1, "maximum": 100}}}},
-    {"name": "osa_get_schema", "annotations": READ_ONLY,
+    {"name": "osa_get_schema",
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
      "description": "Return an OSA JSON Schema: envelope, subscription (manifest), audit (record) or stream (messages).",
      "inputSchema": {"type": "object", "required": ["name"], "properties": {"name": _KINDS}}},
-    {"name": "osa_validate", "annotations": READ_ONLY,
+    {"name": "osa_validate",
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
      "description": "Check a JSON document against an OSA schema and list every error with its path.",
      "inputSchema": {"type": "object", "required": ["kind", "document"],
                      "properties": {"kind": _KINDS, "document": {"description": "The JSON document to check"}}}},
-    {"name": "osa_list_fixtures", "annotations": READ_ONLY,
+    {"name": "osa_list_fixtures",
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
      "description": "List the conformance fixtures (routing test vectors) with their size and purpose.",
      "inputSchema": {"type": "object", "properties": {}}},
-    {"name": "osa_get_fixture", "annotations": READ_ONLY,
+    {"name": "osa_get_fixture",
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
      "description": "Return one conformance fixture: its subscriptions and the expected decision for each case.",
      "inputSchema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}},
 ]
