@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## 0.2.2 (package), 2026-11-21
 - Community files: contributing guide, code of conduct, security policy, governance, roadmap, implementations list, citation metadata, issue and pull request templates.
 - SPEC §10 and "Changes in 0.2" no longer point to a results file outside this repo.
 
