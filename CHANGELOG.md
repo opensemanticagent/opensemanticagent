@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.3 (package), 2026-11-21
 - OpenSSF Best Practices passing badge (project 16976).
 - CI runs ruff (lint and security checks) and CodeQL; workflows default to a read-only token; CONTRIBUTING requires tests for new behavior.
 - Zenodo DOI 10.5281/zenodo.24417032 in CITATION.cff and the README.
