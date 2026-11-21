@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import re
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -80,7 +80,7 @@ def search(query: str, limit: int = 20) -> list[dict]:
     return hits
 
 
-@lru_cache(maxsize=None)
+@cache
 def schema(name: str) -> dict:
     if name not in SCHEMA_NAMES:
         raise KeyError(f"unknown schema {name!r}; one of {', '.join(SCHEMA_NAMES)}")

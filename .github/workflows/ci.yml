@@ -35,3 +35,13 @@ jobs:
           python -m build --wheel
           pip install dist/*.whl
           cd /tmp && printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"osa_get_section","arguments":{"section":"6.3"}}}' | open-semantic-agent | grep -q "Semantic dedupe"
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - name: Lint and security checks (ruff, config in pyproject.toml)
+        run: ruff check osa tests tools

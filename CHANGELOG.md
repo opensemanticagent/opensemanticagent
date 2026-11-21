@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- CI runs ruff (lint and security checks); CONTRIBUTING requires tests for new behavior.
 - Zenodo DOI 10.5281/zenodo.24417032 in CITATION.cff and the README.
 
 ## 0.2.2 (package), 2026-11-21

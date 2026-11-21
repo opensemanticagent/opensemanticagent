@@ -12,13 +12,15 @@
 3. **Editorial changes** (wording, typos, examples that change no rule) just need a pull request.
 4. Before pushing, run the checks CI runs:
    ```bash
-   pip install "jsonschema>=4.20" markdown
+   pip install "jsonschema>=4.20" markdown ruff
+   ruff check osa tests tools
    python -m unittest discover -s tests
    python tools/build_site.py && git diff --exit-code -- docs/
    ```
    The site in `docs/` is generated from `spec/SPEC.md` and `schemas/`; commit it together with the change.
-5. Use made-up data in examples and fixtures. Never commit real personal data or secrets.
-6. Add a line to `CHANGELOG.md` under "Unreleased".
+5. **Tests are required.** New or changed behavior in `osa/` comes with a test in `tests/`, and a rule change comes with a fixture. CI runs the tests on Python 3.10 and 3.12, a lint and security check (ruff), and GitHub CodeQL; all must pass.
+6. Use made-up data in examples and fixtures. Never commit real personal data or secrets.
+7. Add a line to `CHANGELOG.md` under "Unreleased".
 
 ## Versioning
 The spec version appears in envelopes as `"spec": "osa/<major>.<minor>"` (SPEC §12). A minor version only adds features; a major version may break compatibility and needs a migration note. The `open-semantic-agent` package follows the spec's major and minor version and adds a patch number.
