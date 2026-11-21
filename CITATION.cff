@@ -3,6 +3,7 @@ message: "If you use or reference this specification, please cite it as below."
 title: "Open Semantic Agent (OSA) Specification"
 type: software
 version: "0.2.2"
+doi: "10.5281/zenodo.24417032"
 date-released: "2026-11-21"
 authors:
   - family-names: "Hiremath"

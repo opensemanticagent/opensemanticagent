@@ -1,5 +1,7 @@
 # Open Semantic Agent (OSA)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24417032.svg)](https://doi.org/10.5281/zenodo.24417032) [![PyPI](https://img.shields.io/pypi/v/open-semantic-agent)](https://pypi.org/project/open-semantic-agent/) [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 **An open spec for publish/subscribe that routes messages by what they mean.**
 
 Website: **https://opensemanticagent.org** · Spec: [`spec/SPEC.md`](spec/SPEC.md)
@@ -50,7 +52,7 @@ Building one? Open an issue and we'll list it here.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Spec changes go through a pull request against `spec/SPEC.md`; changes that affect routing add or update fixtures in `conformance/fixtures/`. Questions and ideas go to [Discussions](https://github.com/opensemanticagent/opensemanticagent/discussions). Security issues: see [SECURITY.md](SECURITY.md).
 
-If you cite the spec, use [CITATION.cff](CITATION.cff).
+If you cite the spec, use [CITATION.cff](CITATION.cff) or DOI [10.5281/zenodo.24417032](https://doi.org/10.5281/zenodo.24417032) (all versions).
 
 ## License
 
