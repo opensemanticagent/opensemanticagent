@@ -1,3 +1,3 @@
 """Open Semantic Agent (OSA): the spec, its JSON Schemas and conformance fixtures, as a library and an MCP server."""
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 SPEC_VERSION = "0.2"
