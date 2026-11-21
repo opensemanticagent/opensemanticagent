@@ -48,8 +48,9 @@ Building one? Open an issue and we'll list it here.
 
 ## Contributing
 
-Spec changes go through a pull request against `spec/SPEC.md` that explains the motivation, the change and its effect on conformance. Changes that affect routing must add or update fixtures in `conformance/fixtures/`.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Spec changes go through a pull request against `spec/SPEC.md`; changes that affect routing add or update fixtures in `conformance/fixtures/`. Questions and ideas go to [Discussions](https://github.com/opensemanticagent/opensemanticagent/discussions). Security issues: see [SECURITY.md](SECURITY.md).
 
+If you cite the spec, use [CITATION.cff](CITATION.cff).
 
 ## License
 
