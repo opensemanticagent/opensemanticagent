@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensemanticagent.org/schemas/envelope.schema.json",
+  "title": "Open Semantic Agent Envelope",
+  "type": "object",
+  "required": ["spec", "id", "source", "time", "data"],
+  "properties": {
+    "spec": { "type": "string", "pattern": "^osa/\\d+\\.\\d+$" },
+    "id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string" },
+    "topic": { "type": "string" },
+    "source": { "type": "string" },
+    "time": { "type": "string", "format": "date-time" },
+    "content_type": { "type": "string", "default": "application/json" },
+    "schema_ref": { "type": "string" },
+    "data": {},
+    "hints": {
+      "type": "object",
+      "properties": {
+        "urgency": { "enum": ["auto", "low", "normal", "high", "critical"] },
+        "strict": { "type": "boolean", "default": false }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "properties": {
+        "pii": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "osa": {
+      "type": "object",
+      "description": "Reserved for fields derived by the bus",
+      "properties": {
+        "intent": { "type": "string" },
+        "urgency": { "type": "string" },
+        "summary": { "type": "string" },
+        "kind": { "enum": ["message", "digest", "briefing", "repair"] },
+        "duplicates": { "type": "array", "items": { "type": "string" } },
+        "covers": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

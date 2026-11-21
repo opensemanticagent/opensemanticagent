@@ -1,0 +1,117 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Open Semantic Agent: pub/sub that routes by meaning</title><meta name="description" content="Open Semantic Agent (OSA): an open spec for pub/sub that routes messages by meaning, under AI budgets."><link rel="icon" href="favicon.svg" type="image/svg+xml"><style>
+:root{--fg:#15233B;--muted:#56637A;--accent:#0E7C72;--accent2:#B0570A;--bg:#fff;--soft:#F4F6F9;--code:#F1F4F8;--line:#DCE2EB}
+@media (prefers-color-scheme:dark){:root{--fg:#E7ECF4;--muted:#9AA8BE;--accent:#4FC7B9;--accent2:#F0A35A;--bg:#0F1724;--soft:#172235;--code:#1B2840;--line:#2A3850}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{border-bottom:1px solid var(--line)}header .in,main{max-width:900px;margin:0 auto;padding:14px 20px}
+header .in{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+a.brand{display:flex;gap:10px;align-items:center;font-weight:700;color:var(--fg);text-decoration:none;margin-right:auto}
+nav{display:flex;gap:16px;flex-wrap:wrap}nav a{color:var(--muted);text-decoration:none;font-size:15px}nav a:hover{color:var(--accent)}
+h1,h2,h3{line-height:1.25}h1{font-size:2rem}h2{margin-top:2.2rem;padding-bottom:.3rem;border-bottom:1px solid var(--line)}
+a{color:var(--accent)}code{background:var(--code);padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow:auto}pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;display:block;overflow:auto;font-size:.95em}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+blockquote{margin:0;padding-left:14px;border-left:3px solid var(--line);color:var(--muted)}
+footer{max-width:900px;margin:40px auto;padding:16px 20px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+.hero{padding:28px 0 8px}.hero h1{font-size:2.4rem;margin:.2em 0}.hero p.lead{font-size:1.2rem;color:var(--muted);max-width:44em}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+.btn{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;border:1px solid var(--line);color:var(--fg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.step{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px}
+.step b{display:block;font-size:1.05rem}.step small{color:var(--muted)}
+.step .tag{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:var(--accent)}
+.step.paid .tag{color:var(--accent2)}
+@media (max-width:640px){.flow{grid-template-columns:1fr}.hero h1{font-size:1.9rem}}
+</style></head><body><header><div class="in"><a class="brand" href="./"><svg viewBox="0 0 56 56" width="28" height="28" role="img" aria-label="Open Semantic Agent logo">
+<rect width="56" height="56" rx="14" fill="#15233B"/>
+<path d="M10 28h36" stroke="#F4F6F9" stroke-width="3" stroke-linecap="round"/>
+<path d="M18 28c0-7 4-12 10-12M18 28c0 7 4 12 10 12" stroke="#2BB3A5" stroke-width="3" fill="none" stroke-linecap="round"/>
+<circle cx="28" cy="16" r="3.5" fill="#2BB3A5"/><circle cx="28" cy="40" r="3.5" fill="#2BB3A5"/>
+<circle cx="40" cy="28" r="4" fill="#E08A2E"/><circle cx="12" cy="28" r="3" fill="#F4F6F9"/></svg>Open Semantic Agent</a><nav><a href="spec/">Spec</a><a href="schemas/envelope.schema.json">Schemas</a><a href="privacy/">Privacy</a><a href="https://github.com/opensemanticagent/opensemanticagent">GitHub</a></nav></div></header><main>
+<section class="hero">
+<h1>Messages delivered by meaning</h1>
+<p class="lead">Open Semantic Agent (OSA) is an open spec for publish/subscribe that routes each message by what
+it is about, not only by its topic. It runs the free and cheap checks first and calls an AI model only when they are
+unsure, under a budget you set.</p>
+<div class="cta"><a class="btn primary" href="spec/">Read the spec</a>
+<a class="btn" href="https://github.com/opensemanticagent/opensemanticagent">GitHub</a></div>
+</section>
+
+<h2 id="how">How a message is routed</h2>
+<div class="flow">
+<div class="step"><span class="tag">CHECK 1 · FREE</span><b>Topic match</b><small>Plain topic patterns, in microseconds. Most traffic stops here.</small></div>
+<div class="step"><span class="tag">CHECK 2 · CHEAP</span><b>Similarity</b><small>Embeddings compare the message with what each subscriber said it wants.</small></div>
+<div class="step paid"><span class="tag">CHECK 3 · PAID</span><b>AI judge</b><small>Only for the unsure cases, with token budgets and a skip rule when they run out.</small></div>
+</div>
+<p>Every decision writes an audit record you can explain and replay. Topics marked <code>strict</code> never reach a model.</p>
+
+<h2 id="implement">Implement it</h2>
+<p>The spec defines the message envelope, the subscription manifest, the three-check decision engine, audit records,
+and the agent interfaces (MCP tools, HTTP, Server-Sent Events, WebSocket and A2A). JSON Schemas and routing test
+vectors let you check an implementation against it.</p>
+<p>Your AI assistant can read the spec and check documents against the schemas through a small MCP server:</p>
+<pre><code>uvx open-semantic-agent</code></pre>
+
+<h2 id="compare">What it adds to a broker</h2>
+<table>
+<thead>
+<tr>
+<th>Conventional broker</th>
+<th>Open Semantic Agent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>String topics</td>
+<td>Semantic subscriptions: subscribe by meaning</td>
+</tr>
+<tr>
+<td>Payload delivered as-is</td>
+<td>Schema mediation: each subscriber gets its own contract</td>
+</tr>
+<tr>
+<td>Dedupe by message ID</td>
+<td>Semantic dedupe: 40 alerts about one incident become 1</td>
+</tr>
+<tr>
+<td>Static priority</td>
+<td>Reasoned urgency, with a recorded rationale</td>
+</tr>
+<tr>
+<td>Slow consumer → lag or drop</td>
+<td>Backlog summarization: a digest instead of a loss</td>
+</tr>
+<tr>
+<td>Dead-letter queue</td>
+<td>Self-healing DLQ: diagnose, repair, retry or escalate</td>
+</tr>
+<tr>
+<td>Replay the raw log</td>
+<td>Briefings: "catch me up on order 123 since Monday"</td>
+</tr>
+<tr>
+<td>One reply</td>
+<td>Consensus fan-in: ask N agents, reconcile the answers</td>
+</tr>
+<tr>
+<td>Per-topic ACLs</td>
+<td>Per-subscriber redaction by clearance</td>
+</tr>
+<tr>
+<td>Opaque routing</td>
+<td>Every decision audited and replayable</td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="read">Read</h2>
+<ul>
+<li><a href="spec/">Specification 0.2</a> (draft)</li>
+<li>JSON Schemas: <a href="schemas/envelope.schema.json">envelope</a>, <a href="schemas/subscription.schema.json">subscription</a>,
+<a href="schemas/audit.schema.json">audit</a>, <a href="schemas/stream.schema.json">stream</a></li>
+<li><a href="https://github.com/opensemanticagent/opensemanticagent/tree/main/conformance/fixtures">Conformance test vectors</a></li>
+</ul>
+
+<h2 id="contribute">Contribute</h2>
+<p>Source, issues and discussions are on <a href="https://github.com/opensemanticagent/opensemanticagent">GitHub</a>. The spec is Apache-2.0.</p>
+</main><footer>Open Semantic Agent spec 0.2 (draft) · Apache-2.0 · <a href="https://github.com/opensemanticagent/opensemanticagent">Source</a></footer></body></html>

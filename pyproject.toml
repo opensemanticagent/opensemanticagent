@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "open-semantic-agent"
+version = "0.2.1"
+description = "Open Semantic Agent (OSA) spec as an MCP server: read the spec, get the JSON Schemas and conformance fixtures, validate documents."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = ["jsonschema>=4.20"]
+keywords = ["open-semantic-agent", "osa", "specification", "pubsub", "semantic-routing", "mcp", "ai-agents"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: System :: Networking",
+]
+
+[project.urls]
+Homepage = "https://opensemanticagent.org/"
+Specification = "https://opensemanticagent.org/spec/"
+Source = "https://github.com/opensemanticagent/opensemanticagent"
+Issues = "https://github.com/opensemanticagent/opensemanticagent/issues"
+
+[project.scripts]
+open-semantic-agent = "osa.mcp:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["osa"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"spec/SPEC.md" = "osa/data/SPEC.md"
+"schemas" = "osa/data/schemas"
+"conformance/fixtures" = "osa/data/fixtures"
+
+[tool.hatch.build.targets.sdist]
+include = ["osa", "tests", "spec", "schemas", "conformance", "README.md", "LICENSE", "server.json"]

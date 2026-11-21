@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.opensemanticagent/opensemanticagent",
+  "title": "Open Semantic Agent",
+  "description": "Read the Open Semantic Agent pub/sub spec, get its schemas and fixtures, and validate documents.",
+  "repository": { "url": "https://github.com/opensemanticagent/opensemanticagent", "source": "github" },
+  "websiteUrl": "https://opensemanticagent.org/",
+  "version": "0.2.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "open-semantic-agent",
+      "version": "0.2.1",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensemanticagent.org/schemas/stream.schema.json",
+  "title": "Open Semantic Agent WebSocket stream messages (SPEC 0.2 §9.3)",
+  "description": "Each WebSocket text frame holds one of these objects. client_op: client to server. server_message: server to client.",
+  "oneOf": [
+    { "$ref": "#/$defs/client_op" },
+    { "$ref": "#/$defs/server_message" }
+  ],
+  "$defs": {
+    "client_op": {
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "enum": ["subscribe", "unsubscribe", "publish", "call"] },
+        "ref": {},
+        "subscriber": { "type": "string" },
+        "manifest": { "type": "object" },
+        "manifest_yaml": { "type": "string" },
+        "ephemeral": { "type": "boolean" },
+        "envelope": { "type": "object" },
+        "tool": { "type": "string" },
+        "arguments": { "type": "object" }
+      }
+    },
+    "server_message": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["hello", "message", "digest", "ack", "error"] },
+        "spec": { "type": "string" },
+        "ops": { "type": "array", "items": { "type": "string" } },
+        "subscriber": { "type": "string" },
+        "envelope": { "type": "object", "required": ["id", "data"] },
+        "op": {},
+        "ref": {},
+        "result": {},
+        "error": { "type": "string" }
+      },
+      "allOf": [
+        { "anyOf": [ { "properties": { "type": { "const": "hello" } }, "required": ["spec", "ops"] },
+                     { "properties": { "type": { "enum": ["message", "digest", "ack", "error"] } } } ] },
+        { "anyOf": [ { "properties": { "type": { "enum": ["message", "digest"] } }, "required": ["subscriber", "envelope"] },
+                     { "properties": { "type": { "enum": ["hello", "ack", "error"] } } } ] },
+        { "anyOf": [ { "properties": { "type": { "const": "error" } }, "required": ["error"] },
+                     { "properties": { "type": { "enum": ["hello", "message", "digest", "ack"] } } } ] }
+      ]
+    }
+  }
+}

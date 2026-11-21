@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensemanticagent.org/schemas/audit.schema.json",
+  "title": "Open Semantic Agent Audit Record",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "envelope_id",
+    "action",
+    "outcome",
+    "tier",
+    "time"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string"
+    },
+    "envelope_id": {
+      "type": "string"
+    },
+    "subscriber": {
+      "type": "string"
+    },
+    "action": {
+      "enum": [
+        "route",
+        "transform",
+        "dedupe",
+        "digest",
+        "repair",
+        "redact",
+        "drop",
+        "fan_in",
+        "duplicate"
+      ]
+    },
+    "outcome": {
+      "type": "string"
+    },
+    "tier": {
+      "enum": [
+        0,
+        1,
+        2
+      ]
+    },
+    "score": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "model": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "prompt_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "input_hash": {
+      "type": "string"
+    },
+    "budget_fallback": {
+      "type": "boolean"
+    },
+    "below_min_confidence": {
+      "type": "boolean"
+    },
+    "escalated": {
+      "enum": [
+        "suspicious",
+        "cap"
+      ],
+      "description": "Why Tier 1 did not auto-accept (SPEC §5, Tier 1 guard)"
+    },
+    "suspicious": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Guard signals that fired"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
