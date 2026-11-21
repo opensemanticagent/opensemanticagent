@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use or reference this specification, please cite it as below."
+title: "Open Semantic Agent (OSA) Specification"
+type: software
+version: "0.2.1"
+date-released: "2026-11-21"
+authors:
+  - family-names: "Hiremath"
+    given-names: "Sangamesh"
+license: Apache-2.0
+url: "https://opensemanticagent.org"
+repository-code: "https://github.com/opensemanticagent/opensemanticagent"
+keywords:
+  - publish-subscribe
+  - semantic-routing
+  - ai-agents
+  - model-context-protocol
+  - event-driven-architecture
+  - specification
+abstract: >-
+  An open specification for publish/subscribe that routes each message by what it
+  means: a free topic match first, then embedding similarity, then an AI judge only
+  for unsure cases, under token budgets, with every decision audited and replayable.

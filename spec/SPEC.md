@@ -104,7 +104,7 @@ Requirements:
 - When the budget is exhausted, the bus MUST fall back to the highest tier still within budget and record `budget_fallback: true`. By default the threshold decides. With `model_policy.on_budget_exhausted: skip` (0.2) the fallback fails closed: the message is not delivered to that subscriber.
 
 **Tier 1 accept edge (0.2).** By default, Tier 1 auto-accepts at `score ≥ threshold + δ`. A subscription MAY set `match.accept_above` to move only that edge; the reject edge stays at `threshold − δ`. With `accept_above: 1.0`, Tier 1 never auto-accepts: it only rejects confident misses, and the judge decides the rest.
-- Similarity scales are embedder-specific. An implementation SHOULD NOT auto-accept at Tier 1 with a threshold that was not calibrated for the embedder in use, and SHOULD use `accept_above: 1.0` until it is. In a live run on Wikipedia edits, an uncalibrated threshold auto-accepted 82–85 of 85 edits for two unrelated intents, while the judge rejected every edit it saw (`conformance/RESULTS.md`, live section).
+- Similarity scales are embedder-specific. An implementation SHOULD NOT auto-accept at Tier 1 with a threshold that was not calibrated for the embedder in use, and SHOULD use `accept_above: 1.0` until it is. In a live run on Wikipedia edits, an uncalibrated threshold auto-accepted 82–85 of 85 edits for two unrelated intents, while the judge rejected every edit it saw.
 - The reject edge MAY be calibrated from a small sample labeled by the Tier 2 judge, set just under the lowest-scoring positive so that no known positive is dropped. Whether this saves anything depends on the data, so measure it. In the live news sample, the lowest-scoring candidate was itself a positive, so the calibrated edge rejected none of the 27. The savings came from Tier 0 instead.
 
 **Tier 0 is the only free tier.** Producers SHOULD encode cheap, deterministic predicates (record type, size, namespace, keyword rules) as topics or headers, so that subscriptions can use them at Tier 0 and only plausible candidates reach the embedding and judge tiers.
@@ -116,7 +116,7 @@ Requirements:
 - If no Tier 2 reasoner is configured, or the reasoner fails, a flagged message MUST fail closed (not delivered). It MUST NOT fall back to the threshold.
 - Apart from failing closed, the guard decides only *where* a message is judged, never *whether* it matches. A flagged message that Tier 2 accepts is delivered normally.
 - Implementations MAY also cap how far above threshold Tier 1 may auto-accept (`threshold + margin`; such messages go to Tier 2 with `escalated: "cap"`). This is OPTIONAL and off by default.
-- A phrase-based guard is a mitigation, not a defence. On held-out wording (other languages, obfuscated spacing, structured fields, pure keyword stuffing) it misses most payloads (`conformance/RESULTS.md`, rows 13 and 17: 3/12 and 4/12 held-out injections fixed). It does not replace §11's instruction boundary or a capable Tier 2 judge. A model screen generalises much better on held-out wording (rows 40–44: 14/14 with Claude at δ = 0.05, against 10/14 for the phrase guard). Widening δ so that more of the score range reaches a capable judge generalises better (row 18: 10/12 at δ = 0.15).
+- A phrase-based guard is a mitigation, not a defence. On held-out wording (other languages, obfuscated spacing, structured fields, pure keyword stuffing) it misses most payloads: in held-out tests a phrase guard fixed only 3 and 4 of 12 injections. It does not replace §11's instruction boundary or a capable Tier 2 judge. A model screen generalises much better on held-out wording (14/14 with a Claude screen at δ = 0.05, against 10/14 for the phrase guard). Widening δ so that more of the score range reaches a capable judge generalises better (10/12 at δ = 0.15).
 
 ## 6. Capabilities
 
@@ -264,7 +264,7 @@ The bus MAY push a subscriber's deliveries over a live connection instead of mak
 | **L1 Semantic** | L0 + Tier 1, §6.1, §6.3, §9.1 |
 | **L2 Agentic** | L1 + Tier 2, §6.2, §6.4–6.7 |
 
-The conformance test suite (`/conformance`) publishes fixed envelopes and manifests and measures routing precision and recall per model and provider. Results are recorded in `conformance/RESULTS.md`.
+The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; `IMPLEMENTATIONS.md` lists them.
 
 ## 11. Security considerations
 
@@ -284,7 +284,7 @@ All additive. The envelope format is unchanged, so implementations MUST accept b
 - §5: Tier 0 guidance on source-side topics.
 - §9.1: `consume`. §9.3: streaming delivery with SSE and WebSocket bindings (`schemas/stream.schema.json`).
 - Appendix A (informative): where the bus sits next to request/response APIs, and how to bring data from wired devices through a phone.
-Each change comes from running the reference implementation against a real Kafka broker and a live public event stream (`conformance/RESULTS.md`).
+Each change came from running an implementation against a real Kafka broker and a live public event stream.
 
 ---
 
