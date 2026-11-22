@@ -287,6 +287,7 @@ ModelAdapter
 StoreAdapter                                     # audit + history
   append(audit_record)
   query(filter, since) -&gt; records
+  metrics(metric, subject, since, until, step) -&gt; rollups   # OPTIONAL, 0.3 (§9.1 metrics_query)
 </code></pre>
 <p>The bus MUST select models through a <strong>model policy</strong> (by cost, latency or capability), never by hard-coding them.</p>
 <h2 id="8-audit-record">8. Audit record</h2>
@@ -311,6 +312,68 @@ StoreAdapter                                     # audit + history
 <h3 id="91-mcp-server-required-at-l1">9.1 MCP server (REQUIRED at L1+)</h3>
 <p>Tools: <code>publish</code>, <code>subscribe</code>, <code>unsubscribe</code>, <code>brief</code>, <code>ask</code>, <code>explain(decision_id)</code>, <code>dlq_list</code>, <code>dlq_resolve</code>.</p>
 <p>Implementations SHOULD also expose <code>consume(subscriber, n)</code> for pull delivery (0.2).</p>
+<p><strong>Read-only query tools (OPTIONAL, 0.3)</strong>
+Agents often need to look back, not only subscribe forward: what happened in the last hour, how a number moved. An implementation MAY offer:
+- <code>history(topics, since, until, limit, subject)</code> returns stored envelopes whose topic matches any of the Tier 0 <code>topics</code> patterns (§5), newest first. <code>subject</code>, when given, matches the envelope's <code>subject</code> or a URI under it. Results MUST get the same clearance and redaction (§6.8) a delivery to the caller would get. Envelopes marked <code>secret</code> (§3) MUST NOT be returned. Alerts (§6.10) are read as <code>history(["alert.*"], ...)</code>.
+- <code>metrics_query(metric, subject, since, until, step, aggregation)</code> returns metrics over time as rollup envelopes (§6.9): <code>data.window</code> is <code>step</code>, and each sample carries <code>aggregation</code> (default <code>avg</code>). An implementation MAY answer from stored rollups after retention has removed the raw samples, and MUST then report the coarser <code>window</code> it actually used.</p>
+<p>Both tools only read. Any conformance level, including L0, MAY offer them. An L0 implementation that exposes MCP MAY offer only these two tools.</p>
+<p><strong>Tool annotations (0.3)</strong>
+MCP clients use tool annotations to decide what an agent may call without asking a person. Every §9.1 tool an implementation exposes MUST carry these <code>readOnlyHint</code> and <code>destructiveHint</code> values, and SHOULD carry the <code>idempotentHint</code> values:</p>
+<table>
+<thead>
+<tr>
+<th>Tools</th>
+<th><code>readOnlyHint</code></th>
+<th><code>destructiveHint</code></th>
+<th><code>idempotentHint</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>history</code>, <code>metrics_query</code>, <code>explain</code>, <code>dlq_list</code></td>
+<td>true</td>
+<td>false</td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>brief</code>, <code>ask</code></td>
+<td>true</td>
+<td>false</td>
+<td>false (model output can vary)</td>
+</tr>
+<tr>
+<td><code>consume</code></td>
+<td>false</td>
+<td>false</td>
+<td>false (it removes items from the queue)</td>
+</tr>
+<tr>
+<td><code>publish</code></td>
+<td>false</td>
+<td>false</td>
+<td>true (idempotent by envelope <code>id</code>, §3)</td>
+</tr>
+<tr>
+<td><code>subscribe</code></td>
+<td>false</td>
+<td>true (replaces a manifest with the same name)</td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>unsubscribe</code></td>
+<td>false</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>dlq_resolve</code></td>
+<td>false</td>
+<td>true</td>
+<td>false</td>
+</tr>
+</tbody>
+</table>
+<p><code>openWorldHint</code> SHOULD be <code>true</code> for tools that can call a model outside the machine (<code>brief</code>, <code>ask</code>, and any tool when the model policy may pick a remote provider) and <code>false</code> otherwise.</p>
 <h3 id="92-a2a-optional">9.2 A2A (OPTIONAL)</h3>
 <p>The bus MAY register as an A2A agent whose skills mirror the MCP tools, so other agents can delegate to it directly.</p>
 <h3 id="93-streaming-delivery-optional-02">9.3 Streaming delivery (OPTIONAL, 0.2)</h3>
@@ -373,7 +436,7 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 </tr>
 </tbody>
 </table>
-<p>Metrics (§6.9), alerts (§6.10) and stream resume (§9.3) are OPTIONAL at every level. An implementation that offers one MUST follow it as written.</p>
+<p>Metrics (§6.9), alerts (§6.10), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.</p>
 <p>The conformance fixtures (<code>conformance/fixtures/</code>) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; <code>IMPLEMENTATIONS.md</code> lists them.</p>
 <h2 id="11-security-considerations">11. Security considerations</h2>
 <ul>
@@ -391,6 +454,7 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 - §6.9: metrics envelopes with batched samples, UCUM units, gauge, counter and delta kinds, and rollups (<code>schemas/metrics.schema.json</code>).
 - §6.10: alerts with severity, state and a dedupe key (<code>schemas/alert.schema.json</code>).
 - §9.3: stream resume with <code>delivery.replay_window</code>, <code>Last-Event-ID</code> and <code>resume_after</code>.
+- §9.1: read-only <code>history</code> and <code>metrics_query</code> tools, open to any level including L0; required MCP tool annotations (<code>readOnlyHint</code>, <code>destructiveHint</code>) for every §9.1 tool.
 - Appendix B (informative): mapping OpenTelemetry logs, metrics and spans to envelopes.</p>
 <h3 id="changes-in-02">Changes in 0.2</h3>
 <p>All additive. The envelope format is unchanged, so implementations MUST accept both <code>osa/0.1</code> and <code>osa/0.2</code> envelopes.

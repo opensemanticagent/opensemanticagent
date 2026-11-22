@@ -237,6 +237,7 @@ ModelAdapter
 StoreAdapter                                     # audit + history
   append(audit_record)
   query(filter, since) -> records
+  metrics(metric, subject, since, until, step) -> rollups   # OPTIONAL, 0.3 (§9.1 metrics_query)
 ```
 
 The bus MUST select models through a **model policy** (by cost, latency or capability), never by hard-coding them.
@@ -270,6 +271,28 @@ Schema: `schemas/audit.schema.json`. One record per decision:
 Tools: `publish`, `subscribe`, `unsubscribe`, `brief`, `ask`, `explain(decision_id)`, `dlq_list`, `dlq_resolve`.
 
 Implementations SHOULD also expose `consume(subscriber, n)` for pull delivery (0.2).
+
+**Read-only query tools (OPTIONAL, 0.3)**
+Agents often need to look back, not only subscribe forward: what happened in the last hour, how a number moved. An implementation MAY offer:
+- `history(topics, since, until, limit, subject)` returns stored envelopes whose topic matches any of the Tier 0 `topics` patterns (§5), newest first. `subject`, when given, matches the envelope's `subject` or a URI under it. Results MUST get the same clearance and redaction (§6.8) a delivery to the caller would get. Envelopes marked `secret` (§3) MUST NOT be returned. Alerts (§6.10) are read as `history(["alert.*"], ...)`.
+- `metrics_query(metric, subject, since, until, step, aggregation)` returns metrics over time as rollup envelopes (§6.9): `data.window` is `step`, and each sample carries `aggregation` (default `avg`). An implementation MAY answer from stored rollups after retention has removed the raw samples, and MUST then report the coarser `window` it actually used.
+
+Both tools only read. Any conformance level, including L0, MAY offer them. An L0 implementation that exposes MCP MAY offer only these two tools.
+
+**Tool annotations (0.3)**
+MCP clients use tool annotations to decide what an agent may call without asking a person. Every §9.1 tool an implementation exposes MUST carry these `readOnlyHint` and `destructiveHint` values, and SHOULD carry the `idempotentHint` values:
+
+| Tools | `readOnlyHint` | `destructiveHint` | `idempotentHint` |
+|---|---|---|---|
+| `history`, `metrics_query`, `explain`, `dlq_list` | true | false | true |
+| `brief`, `ask` | true | false | false (model output can vary) |
+| `consume` | false | false | false (it removes items from the queue) |
+| `publish` | false | false | true (idempotent by envelope `id`, §3) |
+| `subscribe` | false | true (replaces a manifest with the same name) | true |
+| `unsubscribe` | false | true | true |
+| `dlq_resolve` | false | true | false |
+
+`openWorldHint` SHOULD be `true` for tools that can call a model outside the machine (`brief`, `ask`, and any tool when the model policy may pick a remote provider) and `false` otherwise.
 
 ### 9.2 A2A (OPTIONAL)
 The bus MAY register as an A2A agent whose skills mirror the MCP tools, so other agents can delegate to it directly.
@@ -324,7 +347,7 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 | **L1 Semantic** | L0 + Tier 1, §6.1, §6.3, §9.1 |
 | **L2 Agentic** | L1 + Tier 2, §6.2, §6.4–6.7 |
 
-Metrics (§6.9), alerts (§6.10) and stream resume (§9.3) are OPTIONAL at every level. An implementation that offers one MUST follow it as written.
+Metrics (§6.9), alerts (§6.10), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.
 
 The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; `IMPLEMENTATIONS.md` lists them.
 
@@ -346,6 +369,7 @@ All additive. Implementations MUST accept `osa/0.1`, `osa/0.2` and `osa/0.3` env
 - §6.9: metrics envelopes with batched samples, UCUM units, gauge, counter and delta kinds, and rollups (`schemas/metrics.schema.json`).
 - §6.10: alerts with severity, state and a dedupe key (`schemas/alert.schema.json`).
 - §9.3: stream resume with `delivery.replay_window`, `Last-Event-ID` and `resume_after`.
+- §9.1: read-only `history` and `metrics_query` tools, open to any level including L0; required MCP tool annotations (`readOnlyHint`, `destructiveHint`) for every §9.1 tool.
 - Appendix B (informative): mapping OpenTelemetry logs, metrics and spans to envelopes.
 
 ### Changes in 0.2

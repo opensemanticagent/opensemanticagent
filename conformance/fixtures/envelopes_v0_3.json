@@ -1,7 +1,7 @@
 {
   "name": "envelopes_v0_3",
   "spec": "osa/0.3",
-  "description": "OSA 0.3 draft: schema cases for metrics (\u00a76.9), alerts (\u00a76.10), subject, correlation and sensitivity (\u00a73), replay window and resume (\u00a79.3); and handling cases with the expected strict behaviour. Each schema case names the schema, the document and whether it is valid.",
+  "description": "OSA 0.3 draft: schema cases for metrics (§6.9), alerts (§6.10), subject, correlation and sensitivity (§3), replay window and resume (§9.3); and handling cases with the expected strict behaviour. Each schema case names the schema, the document and whether it is valid.",
   "cases": [
     {
       "name": "metrics envelope with batched samples",
@@ -445,6 +445,26 @@
       },
       "expect": {
         "max_tier": 0
+      }
+    },
+    {
+      "name": "history never returns secret envelopes",
+      "envelope": {
+        "spec": "osa/0.3",
+        "id": "v03-25",
+        "topic": "agent.cli.credential",
+        "source": "agent://cli",
+        "time": "2026-11-22T09:24:03Z",
+        "labels": {
+          "sensitivity": "secret"
+        },
+        "data": {
+          "note": "..."
+        }
+      },
+      "expect": {
+        "strict": true,
+        "in_history": false
       }
     }
   ]
