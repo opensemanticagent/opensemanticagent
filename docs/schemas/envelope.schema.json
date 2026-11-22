@@ -66,6 +66,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "sensitivity": {
+          "enum": [
+            "metadata",
+            "content",
+            "secret"
+          ],
+          "description": "Class of the whole payload (0.3, §3)"
         }
       }
     },
@@ -87,7 +95,8 @@
             "message",
             "digest",
             "briefing",
-            "repair"
+            "repair",
+            "rollup"
           ]
         },
         "duplicates": {
@@ -101,8 +110,74 @@
           "items": {
             "type": "string"
           }
+        },
+        "window": {
+          "type": "string"
+        }
+      }
+    },
+    "subject": {
+      "type": "string",
+      "description": "What the envelope is about, when not the producer (0.3, §3). A URI such as device://, svc://, agent://, process://"
+    },
+    "correlation": {
+      "type": "object",
+      "description": "Links to related work (0.3, §3)",
+      "additionalProperties": true,
+      "properties": {
+        "session": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string",
+          "description": "id of the envelope that caused this one"
+        },
+        "traceparent": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$",
+          "description": "W3C Trace Context traceparent"
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "content_type": {
+            "const": "application/vnd.osa.metrics+json"
+          }
+        },
+        "required": [
+          "content_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "https://opensemanticagent.org/schemas/metrics.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "content_type": {
+            "const": "application/vnd.osa.alert+json"
+          }
+        },
+        "required": [
+          "content_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "https://opensemanticagent.org/schemas/alert.schema.json"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -41,7 +41,7 @@ class McpTest(unittest.TestCase):
 
     def test_schemas_and_validation(self):
         self.assertIn("opensemanticagent.org", tool("osa_get_schema", name="envelope")["structuredContent"]["$id"])
-        good = {"spec": "osa/0.2", "id": "e1", "source": "app://x", "time": "2026-11-21T10:00:00Z",
+        good = {"spec": "osa/0.3", "id": "e1", "source": "app://x", "time": "2026-11-21T10:00:00Z",
                 "topic": "orders.placed", "data": {"n": 1}}
         self.assertTrue(tool("osa_validate", kind="envelope", document=good)["structuredContent"]["valid"])
         bad = tool("osa_validate", kind="envelope", document={"spec": "nope", "data": {}})["structuredContent"]
@@ -53,9 +53,25 @@ class McpTest(unittest.TestCase):
         names = [f["name"] for f in tool("osa_list_fixtures")["structuredContent"]["fixtures"]]
         self.assertIn("routing_v1", names)
         for n in names:
-            for sub in tool("osa_get_fixture", name=n)["structuredContent"]["subscriptions"]:
+            for sub in tool("osa_get_fixture", name=n)["structuredContent"].get("subscriptions", []):
                 r = spec.validate("subscription", sub)
                 self.assertTrue(r["valid"], (n, sub.get("subscriber"), r["errors"]))
+
+    def test_v0_3_schema_cases(self):
+        fx = tool("osa_get_fixture", name="envelopes_v0_3")["structuredContent"]
+        self.assertGreaterEqual(len(fx["cases"]), 16)
+        for c in fx["cases"]:
+            r = tool("osa_validate", kind=c["schema"], document=c["document"])["structuredContent"]
+            self.assertEqual(r["valid"], c["valid"], (c["name"], r["errors"]))
+        for h in fx["handling"]:  # handling cases must at least be valid envelopes
+            self.assertTrue(spec.validate("envelope", h["envelope"])["valid"], h["name"])
+
+    def test_v0_3_sections_and_schemas(self):
+        ids = [s["id"] for s in tool("osa_list_sections")["structuredContent"]["sections"]]
+        self.assertTrue({"6.9", "6.10", "B"} <= set(ids), ids)
+        self.assertIn("Alerts", tool("osa_get_section", section="6.10")["structuredContent"]["title"])
+        for k in ("metrics", "alert"):
+            self.assertIn(k, tool("osa_get_schema", name=k)["structuredContent"]["$id"])
 
     def test_stdio(self):
         out = io.StringIO()

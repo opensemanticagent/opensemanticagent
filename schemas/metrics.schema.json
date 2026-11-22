@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensemanticagent.org/schemas/metrics.schema.json",
+  "title": "Open Semantic Agent Metrics Data (SPEC 0.3 §6.9)",
+  "description": "The data of an envelope whose content_type is application/vnd.osa.metrics+json",
+  "type": "object",
+  "required": [
+    "samples"
+  ],
+  "properties": {
+    "start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "interval_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "window": {
+      "type": "string",
+      "description": "Set on rollups, for example 1m"
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sample"
+      }
+    }
+  },
+  "$defs": {
+    "sample": {
+      "type": "object",
+      "required": [
+        "metric",
+        "value",
+        "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$"
+        },
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Case-sensitive UCUM code: 1, %, By, By/s, s, ms, W, J, Cel, Hz"
+        },
+        "kind": {
+          "enum": [
+            "gauge",
+            "counter",
+            "delta"
+          ],
+          "default": "gauge"
+        },
+        "reset_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "aggregation": {
+          "enum": [
+            "avg",
+            "min",
+            "max",
+            "sum",
+            "count",
+            "last"
+          ]
+        },
+        "subject": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "counter"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "reset_time"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

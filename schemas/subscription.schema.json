@@ -3,54 +3,167 @@
   "$id": "https://opensemanticagent.org/schemas/subscription.schema.json",
   "title": "Open Semantic Agent Subscription Manifest",
   "type": "object",
-  "required": ["subscriber", "match"],
+  "required": [
+    "subscriber",
+    "match"
+  ],
   "properties": {
-    "subscriber": { "type": "string" },
+    "subscriber": {
+      "type": "string"
+    },
     "match": {
       "type": "object",
-      "anyOf": [{ "required": ["topics"] }, { "required": ["intent"] }],
+      "anyOf": [
+        {
+          "required": [
+            "topics"
+          ]
+        },
+        {
+          "required": [
+            "intent"
+          ]
+        }
+      ],
       "properties": {
-        "topics": { "type": "array", "items": { "type": "string" } },
-        "intent": { "type": "string" },
-        "threshold": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.75 },
-        "accept_above": { "type": "number", "minimum": 0, "maximum": 1, "description": "Tier 1 auto-accept edge (0.2); default threshold + delta, 1 = never" },
-        "min_confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0, "description": "Tier 2 matches below this confidence are not delivered (0.2)" },
-        "mode": { "enum": ["all", "any"], "default": "all" }
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intent": {
+          "type": "string"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.75
+        },
+        "accept_above": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Tier 1 auto-accept edge (0.2); default threshold + delta, 1 = never"
+        },
+        "min_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0,
+          "description": "Tier 2 matches below this confidence are not delivered (0.2)"
+        },
+        "mode": {
+          "enum": [
+            "all",
+            "any"
+          ],
+          "default": "all"
+        }
       }
     },
     "contract": {
       "type": "object",
       "properties": {
-        "schema": { "type": "string" },
-        "language": { "type": "string" },
-        "detail": { "enum": ["full", "summary", "headline"], "default": "full" }
+        "schema": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "detail": {
+          "enum": [
+            "full",
+            "summary",
+            "headline"
+          ],
+          "default": "full"
+        }
       }
     },
-    "clearance": { "enum": ["pii:none", "pii:masked", "pii:full"], "default": "pii:none" },
+    "clearance": {
+      "enum": [
+        "pii:none",
+        "pii:masked",
+        "pii:full"
+      ],
+      "default": "pii:none"
+    },
     "dedupe": {
       "type": "object",
       "properties": {
-        "threshold": { "type": "number", "default": 0.9 },
-        "window": { "type": "string", "default": "10m" },
-        "cross_trace": { "type": "boolean", "default": false }
+        "threshold": {
+          "type": "number",
+          "default": 0.9
+        },
+        "window": {
+          "type": "string",
+          "default": "10m"
+        },
+        "cross_trace": {
+          "type": "boolean",
+          "default": false
+        }
       }
     },
     "delivery": {
       "type": "object",
       "properties": {
-        "mode": { "enum": ["realtime", "digest"], "default": "realtime" },
-        "digest_window": { "type": "string" },
-        "max_lag": { "type": "integer" },
-        "overflow": { "enum": ["summarize", "drop_oldest", "block"], "default": "summarize" }
+        "mode": {
+          "enum": [
+            "realtime",
+            "digest"
+          ],
+          "default": "realtime"
+        },
+        "digest_window": {
+          "type": "string"
+        },
+        "max_lag": {
+          "type": "integer"
+        },
+        "overflow": {
+          "enum": [
+            "summarize",
+            "drop_oldest",
+            "block"
+          ],
+          "default": "summarize"
+        },
+        "replay_window": {
+          "type": "string",
+          "description": "Streams may resume within this window (0.3, §9.3), for example 10m"
+        }
       }
     },
     "model_policy": {
       "type": "object",
       "properties": {
-        "tier": { "enum": ["auto", "max_tier_1", "strict"], "default": "auto" },
-        "budget_tokens_per_hour": { "type": "integer" },
-        "on_budget_exhausted": { "enum": ["threshold", "skip"], "default": "threshold" },
-        "prefer": { "type": "array", "items": { "type": "string" } }
+        "tier": {
+          "enum": [
+            "auto",
+            "max_tier_1",
+            "strict"
+          ],
+          "default": "auto"
+        },
+        "budget_tokens_per_hour": {
+          "type": "integer"
+        },
+        "on_budget_exhausted": {
+          "enum": [
+            "threshold",
+            "skip"
+          ],
+          "default": "threshold"
+        },
+        "prefer": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     }
   }

@@ -130,6 +130,10 @@
             "block"
           ],
           "default": "summarize"
+        },
+        "replay_window": {
+          "type": "string",
+          "description": "Streams may resume within this window (0.3, §9.3), for example 10m"
         }
       }
     },

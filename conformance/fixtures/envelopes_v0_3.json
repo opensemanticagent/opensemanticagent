@@ -1,0 +1,451 @@
+{
+  "name": "envelopes_v0_3",
+  "spec": "osa/0.3",
+  "description": "OSA 0.3 draft: schema cases for metrics (\u00a76.9), alerts (\u00a76.10), subject, correlation and sensitivity (\u00a73), replay window and resume (\u00a79.3); and handling cases with the expected strict behaviour. Each schema case names the schema, the document and whether it is valid.",
+  "cases": [
+    {
+      "name": "metrics envelope with batched samples",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-1",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "topic": "device.sensor-7.metrics",
+        "content_type": "application/vnd.osa.metrics+json",
+        "data": {
+          "start": "2026-11-22T09:24:02Z",
+          "interval_s": 1,
+          "samples": [
+            {
+              "metric": "cpu.utilization",
+              "value": 0.42,
+              "unit": "1"
+            },
+            {
+              "metric": "power.draw",
+              "value": 10.8,
+              "unit": "W",
+              "kind": "gauge"
+            },
+            {
+              "metric": "net.bytes_in",
+              "value": 182000,
+              "unit": "By",
+              "kind": "counter",
+              "reset_time": "2026-11-22T00:00:00Z",
+              "subject": "process://sensor-7/4410@1764140000"
+            }
+          ]
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "sample without a unit",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-2",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "content_type": "application/vnd.osa.metrics+json",
+        "data": {
+          "samples": [
+            {
+              "metric": "cpu.utilization",
+              "value": 0.4
+            }
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "counter without reset_time",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-3",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "content_type": "application/vnd.osa.metrics+json",
+        "data": {
+          "samples": [
+            {
+              "metric": "net.bytes_in",
+              "value": 5,
+              "unit": "By",
+              "kind": "counter"
+            }
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "metric name with capitals",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-4",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "content_type": "application/vnd.osa.metrics+json",
+        "data": {
+          "samples": [
+            {
+              "metric": "CPU.Util",
+              "value": 1,
+              "unit": "1"
+            }
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "empty samples",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-5",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "content_type": "application/vnd.osa.metrics+json",
+        "data": {
+          "samples": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "rollup with aggregation",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-6",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "content_type": "application/vnd.osa.metrics+json",
+        "data": {
+          "window": "1m",
+          "samples": [
+            {
+              "metric": "power.draw",
+              "value": 9.7,
+              "unit": "W",
+              "aggregation": "avg"
+            }
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "alert firing",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-7",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "topic": "alert.thermal",
+        "content_type": "application/vnd.osa.alert+json",
+        "data": {
+          "alert": "thermal.throttling",
+          "severity": "warning",
+          "state": "firing",
+          "dedupe_key": "sensor-7/thermal",
+          "summary": "Throttling for 3 minutes",
+          "value": 0.82,
+          "unit": "1",
+          "threshold": 0.8
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "alert resolved",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-8",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "topic": "alert.thermal",
+        "content_type": "application/vnd.osa.alert+json",
+        "data": {
+          "alert": "thermal.throttling",
+          "severity": "warning",
+          "state": "resolved",
+          "dedupe_key": "sensor-7/thermal",
+          "summary": "Throttling for 3 minutes",
+          "value": 0.82,
+          "unit": "1",
+          "threshold": 0.8,
+          "resolved_at": "2026-11-22T09:24:03Z"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "alert without dedupe_key",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-9",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "content_type": "application/vnd.osa.alert+json",
+        "data": {
+          "alert": "thermal.throttling",
+          "severity": "warning",
+          "state": "firing",
+          "summary": "Throttling for 3 minutes",
+          "value": 0.82,
+          "unit": "1",
+          "threshold": 0.8
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "alert with unknown severity",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-10",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "content_type": "application/vnd.osa.alert+json",
+        "data": {
+          "alert": "thermal.throttling",
+          "severity": "urgent",
+          "state": "firing",
+          "dedupe_key": "sensor-7/thermal",
+          "summary": "Throttling for 3 minutes",
+          "value": 0.82,
+          "unit": "1",
+          "threshold": 0.8
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "subject and correlation with traceparent",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-11",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "subject": "agent://example-app/session/s-81",
+        "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "correlation": {
+          "session": "s-81",
+          "parent": "v03-10",
+          "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        },
+        "data": {
+          "tool": "search"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "malformed traceparent",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-12",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "correlation": {
+          "traceparent": "not-a-trace"
+        },
+        "data": {}
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown sensitivity class",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.3",
+        "id": "v03-13",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "labels": {
+          "sensitivity": "private"
+        },
+        "data": {}
+      },
+      "valid": false
+    },
+    {
+      "name": "0.2 envelope stays valid",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.2",
+        "id": "v02-1",
+        "source": "svc://checkout",
+        "time": "2026-11-22T09:24:03Z",
+        "topic": "payments.events",
+        "data": {
+          "amount": 10
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "subscription with replay window",
+      "schema": "subscription",
+      "document": {
+        "subscriber": "phone",
+        "match": {
+          "topics": [
+            "alert.*"
+          ]
+        },
+        "delivery": {
+          "mode": "realtime",
+          "replay_window": "10m"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "stream resume op",
+      "schema": "stream",
+      "document": {
+        "op": "subscribe",
+        "subscriber": "phone",
+        "resume_after": "v03-7"
+      },
+      "valid": true
+    }
+  ],
+  "handling": [
+    {
+      "name": "content without hints.strict is strict",
+      "envelope": {
+        "spec": "osa/0.3",
+        "id": "v03-20",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "labels": {
+          "sensitivity": "content"
+        },
+        "data": {
+          "text": "..."
+        }
+      },
+      "expect": {
+        "strict": true
+      }
+    },
+    {
+      "name": "content with hints.strict false may reach models",
+      "envelope": {
+        "spec": "osa/0.3",
+        "id": "v03-21",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "labels": {
+          "sensitivity": "content"
+        },
+        "hints": {
+          "strict": false
+        },
+        "data": {
+          "text": "..."
+        }
+      },
+      "expect": {
+        "strict": false
+      }
+    },
+    {
+      "name": "secret is strict even when hints.strict is false",
+      "envelope": {
+        "spec": "osa/0.3",
+        "id": "v03-22",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "labels": {
+          "sensitivity": "secret"
+        },
+        "hints": {
+          "strict": false
+        },
+        "data": {
+          "key": "..."
+        }
+      },
+      "expect": {
+        "strict": true,
+        "in_digests": false,
+        "in_briefings": false,
+        "repairable": false
+      }
+    },
+    {
+      "name": "no sensitivity behaves as 0.2",
+      "envelope": {
+        "spec": "osa/0.3",
+        "id": "v03-23",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "data": {
+          "text": "..."
+        }
+      },
+      "expect": {
+        "strict": false
+      }
+    },
+    {
+      "name": "metrics are not embedded or judged",
+      "envelope": {
+        "spec": "osa/0.3",
+        "id": "v03-24",
+        "source": "device://sensor-7",
+        "time": "2026-11-22T09:24:03Z",
+        "topic": "device.sensor-7.metrics",
+        "content_type": "application/vnd.osa.metrics+json",
+        "data": {
+          "start": "2026-11-22T09:24:02Z",
+          "interval_s": 1,
+          "samples": [
+            {
+              "metric": "cpu.utilization",
+              "value": 0.42,
+              "unit": "1"
+            },
+            {
+              "metric": "power.draw",
+              "value": 10.8,
+              "unit": "W",
+              "kind": "gauge"
+            },
+            {
+              "metric": "net.bytes_in",
+              "value": 182000,
+              "unit": "By",
+              "kind": "counter",
+              "reset_time": "2026-11-22T00:00:00Z",
+              "subject": "process://sensor-7/4410@1764140000"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "max_tier": 0
+      }
+    }
+  ]
+}

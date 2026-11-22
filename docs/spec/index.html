@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Specification 0.2 · Open Semantic Agent</title><meta name="description" content="The Open Semantic Agent (OSA) specification, version 0.2 (draft)."><link rel="icon" href="../favicon.svg" type="image/svg+xml"><style>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Specification 0.3 · Open Semantic Agent</title><meta name="description" content="The Open Semantic Agent (OSA) specification, version 0.3 (draft)."><link rel="icon" href="../favicon.svg" type="image/svg+xml"><style>
 :root{--fg:#15233B;--muted:#56637A;--accent:#0E7C72;--accent2:#B0570A;--bg:#fff;--soft:#F4F6F9;--code:#F1F4F8;--line:#DCE2EB}
 @media (prefers-color-scheme:dark){:root{--fg:#E7ECF4;--muted:#9AA8BE;--accent:#4FC7B9;--accent2:#F0A35A;--bg:#0F1724;--soft:#172235;--code:#1B2840;--line:#2A3850}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -28,7 +28,7 @@ footer{max-width:900px;margin:40px auto;padding:16px 20px;border-top:1px solid v
 <path d="M18 28c0-7 4-12 10-12M18 28c0 7 4 12 10 12" stroke="#2BB3A5" stroke-width="3" fill="none" stroke-linecap="round"/>
 <circle cx="28" cy="16" r="3.5" fill="#2BB3A5"/><circle cx="28" cy="40" r="3.5" fill="#2BB3A5"/>
 <circle cx="40" cy="28" r="4" fill="#E08A2E"/><circle cx="12" cy="28" r="3" fill="#F4F6F9"/></svg>Open Semantic Agent</a><nav><a href="../spec/">Spec</a><a href="../schemas/envelope.schema.json">Schemas</a><a href="../privacy/">Privacy</a><a href="https://github.com/opensemanticagent/opensemanticagent">GitHub</a></nav></div></header><main><h1 id="open-semantic-agent-osa-specification">Open Semantic Agent (OSA) Specification</h1>
-<p><strong>Version:</strong> 0.2 (draft) · <strong>Status:</strong> RFC · <strong>License:</strong> Apache-2.0 · <strong>Website:</strong> https://opensemanticagent.org</p>
+<p><strong>Version:</strong> 0.3 (draft) · <strong>Status:</strong> RFC · <strong>License:</strong> Apache-2.0 · <strong>Website:</strong> https://opensemanticagent.org</p>
 <p>The key words MUST, SHOULD and MAY are used as in RFC 2119.</p>
 <hr />
 <h2 id="1-scope">1. Scope</h2>
@@ -77,6 +77,18 @@ footer{max-width:900px;margin:40px auto;padding:16px 20px;border-top:1px solid v
 <td><strong>Audit record</strong></td>
 <td>The immutable log entry for a decision (§8)</td>
 </tr>
+<tr>
+<td><strong>Subject</strong></td>
+<td>What an envelope is about, when that differs from its producer (§3, 0.3)</td>
+</tr>
+<tr>
+<td><strong>Sample</strong></td>
+<td>One numeric measurement inside a metrics envelope (§6.9, 0.3)</td>
+</tr>
+<tr>
+<td><strong>Alert</strong></td>
+<td>An envelope that opens or closes a condition someone should act on (§6.10, 0.3)</td>
+</tr>
 </tbody>
 </table>
 <h2 id="3-envelope">3. Envelope</h2>
@@ -87,12 +99,14 @@ footer{max-width:900px;margin:40px auto;padding:16px 20px;border-top:1px solid v
   &quot;trace_id&quot;: &quot;tr-7f2a&quot;,
   &quot;topic&quot;: &quot;payments.events&quot;,
   &quot;source&quot;: &quot;svc://checkout&quot;,
+  &quot;subject&quot;: &quot;svc://checkout/order/ord-5521&quot;,
   &quot;time&quot;: &quot;2026-11-18T10:42:00Z&quot;,
   &quot;content_type&quot;: &quot;application/json&quot;,
   &quot;schema_ref&quot;: &quot;schemas://payment_event/v3&quot;,
   &quot;data&quot;: { &quot;...&quot;: &quot;...&quot; },
   &quot;hints&quot;: { &quot;urgency&quot;: &quot;auto&quot;, &quot;strict&quot;: false },
-  &quot;labels&quot;: { &quot;pii&quot;: [&quot;card_last4&quot;, &quot;email&quot;] }
+  &quot;labels&quot;: { &quot;pii&quot;: [&quot;card_last4&quot;, &quot;email&quot;], &quot;sensitivity&quot;: &quot;metadata&quot; },
+  &quot;correlation&quot;: { &quot;session&quot;: &quot;sess-81&quot;, &quot;parent&quot;: &quot;01JD3Z8K6Q9W1A&quot; }
 }
 </code></pre>
 <ul>
@@ -101,6 +115,9 @@ footer{max-width:900px;margin:40px auto;padding:16px 20px;border-top:1px solid v
 <li><code>labels.pii</code> lists fields that the redaction stage (§6.8) MUST handle before any model call.</li>
 <li>The bus MAY add the derived fields <code>osa.intent</code>, <code>osa.urgency</code> and <code>osa.summary</code>. They MUST be written under the reserved <code>osa</code> key and never overwrite <code>data</code>.</li>
 <li><strong>Idempotent publish (0.2).</strong> <code>id</code> MUST be unique per publisher. Transports such as Kafka deliver at least once, and they redeliver after a crash. So when an envelope arrives whose <code>id</code> the bus has already routed (within its message-history retention), the bus MUST NOT route or deliver it again. It SHOULD return the original decisions and MUST write one audit record with <code>action: "duplicate"</code>, noting whether the payload differs from the original. A repeated failure for the same consumer is detected through DLQ retries (§6.5), not through republishing.</li>
+<li><strong>Subject (0.3).</strong> <code>source</code> names the producer of an envelope. When the envelope is about something else (a session, a process, a device that does not publish for itself), <code>subject</code> MAY name it. Both are URIs. Implementations SHOULD use these forms where they fit: <code>device://&lt;device-id&gt;</code>, <code>svc://&lt;service&gt;</code>, <code>agent://&lt;app&gt;</code>, <code>agent://&lt;app&gt;/session/&lt;session-id&gt;</code> and <code>process://&lt;device-id&gt;/&lt;pid&gt;@&lt;start-time&gt;</code> (the start time keeps a reused process id from merging two processes). A subscription MAY match on <code>subject</code> at Tier 0 with the same glob rules as <code>topic</code>.</li>
+<li><strong>Correlation (0.3).</strong> <code>correlation</code> MAY link an envelope to related work: <code>session</code> (a session or run identifier), <code>parent</code> (the <code>id</code> of the envelope that caused this one) and <code>traceparent</code> (a W3C Trace Context <code>traceparent</code> value). When <code>traceparent</code> is present, <code>trace_id</code> SHOULD carry its trace id, so 0.2 consumers keep working. A bus MUST NOT dedupe (§6.3) across different <code>correlation.session</code> values unless the subscription enables <code>dedupe.cross_trace</code>.</li>
+<li><strong>Sensitivity (0.3).</strong> <code>labels.sensitivity</code> MAY classify the payload as a whole: <code>metadata</code> (names, sizes, timings, counts), <code>content</code> (text a person or agent wrote, such as prompts, documents, tool arguments and outputs) or <code>secret</code> (credentials and keys). An envelope marked <code>content</code> that has no <code>hints.strict</code> field MUST be handled as <code>strict</code>; a publisher that wants content routed by meaning sets <code>hints.strict: false</code> explicitly. An envelope marked <code>secret</code> MUST be handled as <code>strict</code> whatever <code>hints.strict</code> says, and MUST NOT appear in digests (§6.4), briefings (§6.6), audit <code>reason</code> text (§8) or repairs (§6.5). An envelope without <code>labels.sensitivity</code> behaves as in 0.2.</li>
 </ul>
 <h2 id="4-subscription-manifest">4. Subscription manifest</h2>
 <p>Schema: <code>schemas/subscription.schema.json</code>.</p>
@@ -120,6 +137,7 @@ delivery:
   mode: realtime                              # realtime | digest
   digest_window: 5m
   overflow: summarize                         # summarize | drop_oldest | block
+  replay_window: 10m                          # optional (0.3): streams may resume within this window (§9.3)
 model_policy:
   tier: auto                                  # auto | max_tier_1 | strict
   budget_tokens_per_hour: 200000
@@ -211,6 +229,46 @@ model_policy:
 - masked (format-preserving) for <code>pii:masked</code>,
 - left as-is for <code>pii:full</code>.</p>
 <p>A model adapter MUST receive the most restrictive view that any downstream use requires.</p>
+<h3 id="69-metrics-optional-03">6.9 Metrics (OPTIONAL, 0.3)</h3>
+<p>Numeric measurements travel in metrics envelopes: <code>content_type: "application/vnd.osa.metrics+json"</code>, with <code>data</code> shaped as <code>schemas/metrics.schema.json</code>. One envelope carries a batch of samples, so a publisher that measures many things every second sends one envelope, not one per number.</p>
+<pre><code class="language-json">{
+  &quot;spec&quot;: &quot;osa/0.3&quot;,
+  &quot;id&quot;: &quot;sensor-7-1764150243&quot;,
+  &quot;topic&quot;: &quot;device.sensor-7.metrics&quot;,
+  &quot;source&quot;: &quot;device://sensor-7&quot;,
+  &quot;time&quot;: &quot;2026-11-22T09:24:03Z&quot;,
+  &quot;content_type&quot;: &quot;application/vnd.osa.metrics+json&quot;,
+  &quot;data&quot;: {
+    &quot;start&quot;: &quot;2026-11-22T09:24:02Z&quot;,
+    &quot;interval_s&quot;: 1,
+    &quot;samples&quot;: [
+      { &quot;metric&quot;: &quot;cpu.utilization&quot;, &quot;value&quot;: 0.42, &quot;unit&quot;: &quot;1&quot;, &quot;kind&quot;: &quot;gauge&quot; },
+      { &quot;metric&quot;: &quot;power.draw&quot;, &quot;value&quot;: 10.8, &quot;unit&quot;: &quot;W&quot;, &quot;kind&quot;: &quot;gauge&quot; },
+      { &quot;metric&quot;: &quot;net.bytes_in&quot;, &quot;value&quot;: 182000, &quot;unit&quot;: &quot;By&quot;, &quot;kind&quot;: &quot;counter&quot;,
+        &quot;reset_time&quot;: &quot;2026-11-22T00:00:00Z&quot;, &quot;subject&quot;: &quot;process://sensor-7/4410@1764140000&quot; }
+    ]
+  },
+  &quot;labels&quot;: { &quot;sensitivity&quot;: &quot;metadata&quot; }
+}
+</code></pre>
+<ul>
+<li><strong>Samples.</strong> Each sample MUST have <code>metric</code> (lower-case, dot-separated), a numeric <code>value</code> and a <code>unit</code>. It MAY have <code>kind</code>, <code>subject</code> (overrides the envelope's subject for this sample), <code>time</code> (overrides <code>start</code>) and <code>attributes</code> (string values only).</li>
+<li><strong>Units.</strong> <code>unit</code> MUST be a case-sensitive UCUM code, as OpenTelemetry uses: <code>1</code> for ratios, <code>%</code> for percent, <code>By</code> for bytes, <code>By/s</code>, <code>s</code>, <code>ms</code>, <code>W</code>, <code>J</code>, <code>Cel</code>, <code>Hz</code>. Consumers MUST NOT guess units from metric names.</li>
+<li><strong>Kinds.</strong> <code>gauge</code> (a value at a point in time, the default), <code>counter</code> (a running total that only grows from <code>reset_time</code>) and <code>delta</code> (the change during <code>interval_s</code>). A counter that starts again from zero MUST carry a new <code>reset_time</code>.</li>
+<li><strong>Rollups.</strong> A publisher or the bus MAY summarise samples over a window. A rollup is a metrics envelope whose <code>data.window</code> names the window (for example <code>1m</code>) and whose samples carry <code>aggregation</code>: <code>avg</code>, <code>min</code>, <code>max</code>, <code>sum</code>, <code>count</code> or <code>last</code>. A rollup made by the bus carries <code>osa.kind: "rollup"</code> and MAY list <code>osa.covers</code>. Unlike a digest (§6.4), a rollup MAY outlive its source samples when the store's retention removes them.</li>
+<li><strong>Routing.</strong> Metrics envelopes SHOULD be routed at Tier 0 by topic and subject. A bus MUST NOT embed or judge metrics envelopes sample by sample; to act on what numbers mean, publish an alert (§6.10) or a rollup and route that.</li>
+</ul>
+<h3 id="610-alerts-optional-03">6.10 Alerts (OPTIONAL, 0.3)</h3>
+<p>An alert opens or closes a condition someone should act on: <code>content_type: "application/vnd.osa.alert+json"</code>, with <code>data</code> shaped as <code>schemas/alert.schema.json</code>.</p>
+<pre><code class="language-json">{ &quot;alert&quot;: &quot;thermal.throttling&quot;, &quot;severity&quot;: &quot;warning&quot;, &quot;state&quot;: &quot;firing&quot;,
+  &quot;dedupe_key&quot;: &quot;sensor-7/thermal&quot;, &quot;summary&quot;: &quot;Throttling for 3 minutes&quot;,
+  &quot;value&quot;: 0.82, &quot;unit&quot;: &quot;1&quot;, &quot;threshold&quot;: 0.8, &quot;started&quot;: &quot;2026-11-22T09:21:00Z&quot; }
+</code></pre>
+<ul>
+<li><code>alert</code>, <code>severity</code> (<code>info</code>, <code>warning</code>, <code>critical</code>), <code>state</code> (<code>firing</code>, <code>resolved</code>) and <code>dedupe_key</code> are REQUIRED.</li>
+<li>At most one condition is open per <code>dedupe_key</code>. A repeated <code>firing</code> envelope for an open key updates it; consumers SHOULD show it once. A <code>resolved</code> envelope MUST carry the same <code>dedupe_key</code>.</li>
+<li>Alerts SHOULD use topics <code>alert.&lt;kind&gt;</code>, so subscriptions can take them at Tier 0. An alert about a safety limit SHOULD carry <code>hints.strict: true</code> (Appendix A.2), so its delivery never depends on a model or a budget.</li>
+</ul>
 <h2 id="7-adapter-interfaces">7. Adapter interfaces</h2>
 <p>Language-neutral pseudo-signatures:</p>
 <pre><code>TransportAdapter
@@ -269,10 +327,10 @@ StoreAdapter                                     # audit + history
 - <code>GET &lt;base&gt;/stream/&lt;subscriber&gt;</code> with <code>Accept: text/event-stream</code>. The response is <code>200</code>, <code>Content-Type: text/event-stream</code>. <code>404</code> means the subscription doesn't exist, <code>409</code> means it already has a live stream, <code>401</code>/<code>403</code> mean authentication failed or the origin was refused.
 - Each delivery is one event: <code>id:</code> is the envelope <code>id</code>, <code>event:</code> is <code>message</code> or <code>digest</code> (a digest is an envelope with <code>osa.kind: "digest"</code>), and <code>data:</code> is the envelope as a single line of JSON. JSON escapes newlines, so one event never spans more than one <code>data:</code> line.
 - Heartbeats are comment lines (<code>: ping</code>). The first bytes of a stream SHOULD include a <code>retry:</code> field.
-- <code>Last-Event-ID</code> on reconnect is informational: items sent before a disconnect were consumed and are not re-sent. Unsent items were requeued under the at-most-once rule.</p>
+- <code>Last-Event-ID</code> on reconnect is informational: items sent before a disconnect were consumed and are not re-sent. Unsent items were requeued under the at-most-once rule. With a replay window (below), it resumes the stream instead.</p>
 <p><strong>WebSocket binding</strong>
-- <code>GET &lt;base&gt;/ws</code> with a standard upgrade (RFC 6455, version 13). Every frame is a text frame holding one JSON object. The server SHOULD accept the subprotocol <code>osa.v0.2</code> when the client offers it.
-- On connect the server sends <code>{"type": "hello", "spec": "osa/0.2", "ops": [...]}</code>.
+- <code>GET &lt;base&gt;/ws</code> with a standard upgrade (RFC 6455, version 13). Every frame is a text frame holding one JSON object. The server SHOULD accept the subprotocols <code>osa.v0.2</code> and <code>osa.v0.3</code> when the client offers them.
+- On connect the server sends <code>{"type": "hello", "spec": "osa/0.3", "ops": [...]}</code>.
 - Client ops. Each MAY carry a <code>ref</code>, which the reply echoes:
   - <code>{"op": "subscribe", "subscriber": "&lt;name&gt;"}</code> attaches to an existing subscription.
   - <code>{"op": "subscribe", "manifest": {...}}</code> or <code>{"op": "subscribe", "manifest_yaml": "..."}</code> creates or replaces a subscription (§4) and attaches it. With <code>"ephemeral": true</code> the subscription is removed when the socket closes.
@@ -286,6 +344,12 @@ StoreAdapter                                     # audit + history
 - One socket MAY attach several subscriptions. Its deliveries are interleaved in the order they were queued.
 - Ping and close frames follow RFC 6455. The server SHOULD send a ping as its heartbeat.
 - Message shapes: <code>schemas/stream.schema.json</code>.</p>
+<p><strong>Resume (OPTIONAL, 0.3)</strong>
+Phones sleep and change networks, so at-most-once streams lose items that were handed to a connection that then dropped. A subscription MAY set <code>delivery.replay_window</code> (§4). Within that window the bus keeps the items it delivered, in order, and a reconnecting consumer can ask for everything after the last item it processed:
+- SSE: a reconnect whose <code>Last-Event-ID</code> names an item still in the window MUST receive every later item first, then the live stream.
+- WebSocket: the <code>subscribe</code> op MAY carry <code>"resume_after": "&lt;envelope id&gt;"</code>, with the same effect. The <code>hello</code> message SHOULD list <code>"replay_window"</code> for each attached subscription.
+- An id that has left the window, or was never delivered, MUST get an <code>error</code> (WebSocket) or a <code>410</code> (SSE), and the consumer starts from the live stream.
+- With resume, a stream delivers at least once. Consumers MUST deduplicate by envelope <code>id</code>.</p>
 <h2 id="10-conformance">10. Conformance</h2>
 <table>
 <thead>
@@ -309,6 +373,7 @@ StoreAdapter                                     # audit + history
 </tr>
 </tbody>
 </table>
+<p>Metrics (§6.9), alerts (§6.10) and stream resume (§9.3) are OPTIONAL at every level. An implementation that offers one MUST follow it as written.</p>
 <p>The conformance fixtures (<code>conformance/fixtures/</code>) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; <code>IMPLEMENTATIONS.md</code> lists them.</p>
 <h2 id="11-security-considerations">11. Security considerations</h2>
 <ul>
@@ -316,9 +381,17 @@ StoreAdapter                                     # audit + history
 <li><strong>Exfiltration:</strong> model adapters run under the most restrictive clearance (§6.8).</li>
 <li><strong>Cost abuse:</strong> budgets are enforced per subscriber and per publisher.</li>
 <li><strong>Repairs</strong> are proposals until they are validated. Only one automatic retry is allowed (§6.5).</li>
+<li><strong>Sensitive payloads:</strong> publishers SHOULD mark prompts, documents and tool input and output as <code>content</code>, and credentials as <code>secret</code> (§3), so they stay out of model paths and summaries by default.</li>
 </ul>
 <h2 id="12-versioning">12. Versioning</h2>
 <p><code>spec</code> in the envelope follows <code>osa/&lt;major&gt;.&lt;minor&gt;</code>. A minor version only adds features. A major version may break compatibility and requires a migration note.</p>
+<h3 id="changes-in-03">Changes in 0.3</h3>
+<p>All additive. Implementations MUST accept <code>osa/0.1</code>, <code>osa/0.2</code> and <code>osa/0.3</code> envelopes.
+- §3: <code>subject</code> and URI forms for devices, services, agents, sessions and processes; <code>correlation</code> (session, parent, W3C <code>traceparent</code>); <code>labels.sensitivity</code> (<code>metadata</code>, <code>content</code>, <code>secret</code>), with content strict by default.
+- §6.9: metrics envelopes with batched samples, UCUM units, gauge, counter and delta kinds, and rollups (<code>schemas/metrics.schema.json</code>).
+- §6.10: alerts with severity, state and a dedupe key (<code>schemas/alert.schema.json</code>).
+- §9.3: stream resume with <code>delivery.replay_window</code>, <code>Last-Event-ID</code> and <code>resume_after</code>.
+- Appendix B (informative): mapping OpenTelemetry logs, metrics and spans to envelopes.</p>
 <h3 id="changes-in-02">Changes in 0.2</h3>
 <p>All additive. The envelope format is unchanged, so implementations MUST accept both <code>osa/0.1</code> and <code>osa/0.2</code> envelopes.
 - §3: idempotent publish by envelope <code>id</code>, with a <code>duplicate</code> audit record.
@@ -362,4 +435,64 @@ Each change came from running an implementation against a real Kafka broker and 
 - <strong>Bad data does not block anything.</strong> A garbled or half-sent reading goes to the DLQ (§6.5), and the good readings keep flowing. Safety alarms are <code>strict</code>, so the bus never tries to repair them.
 - <strong>Device text is where models help.</strong> Error descriptions, technician notes and user comments are routed by meaning (§6.1), within budget (§5). With <code>on_budget_exhausted: skip</code>, the bill cannot grow past the budget.
 - <strong>Every decision is recorded</strong> (§8). For medical, vehicle and payment devices, being able to show who was alerted, when and why can matter for compliance.
-- <strong>Results go back to the phone.</strong> The app can hold a stream (§9.3) on a subscription for its own device, for example an ephemeral WebSocket subscription that ends when the app closes. A "please recheck" or "firmware update available" message then reaches the user without polling. Streams deliver at most once, so the app should deduplicate by envelope <code>id</code>.</p></main><footer>Open Semantic Agent spec 0.2 (draft) · Apache-2.0 · <a href="https://github.com/opensemanticagent/opensemanticagent">Source</a></footer></body></html>
+- <strong>Results go back to the phone.</strong> The app can hold a stream (§9.3) on a subscription for its own device, for example an ephemeral WebSocket subscription that ends when the app closes. A "please recheck" or "firmware update available" message then reaches the user without polling. Streams deliver at most once, so the app should deduplicate by envelope <code>id</code>.</p>
+<h2 id="appendix-b-opentelemetry-mapping-informative">Appendix B. OpenTelemetry mapping (informative)</h2>
+<p>Many agents and services already export OpenTelemetry. This appendix shows one mapping, so that every implementation turns the same OpenTelemetry data into the same envelopes. It adds no requirements.</p>
+<table>
+<thead>
+<tr>
+<th>OpenTelemetry</th>
+<th>Envelope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resource <code>service.name</code> (and <code>host.name</code>)</td>
+<td><code>source</code>, for example <code>svc://checkout</code> or <code>device://&lt;host.name&gt;</code></td>
+</tr>
+<tr>
+<td>Log record or span event name</td>
+<td><code>topic</code>, dots kept, for example <code>tool.call</code> under the service's prefix</td>
+</tr>
+<tr>
+<td>Log record timestamp, or span end time</td>
+<td><code>time</code></td>
+</tr>
+<tr>
+<td>Log record attributes and body</td>
+<td><code>data</code>; prompt or tool text marked <code>labels.sensitivity: content</code></td>
+</tr>
+<tr>
+<td>Trace id and span id</td>
+<td><code>correlation.traceparent</code>, and <code>trace_id</code> for 0.2 consumers</td>
+</tr>
+<tr>
+<td>Session attribute (for example <code>session.id</code>)</td>
+<td><code>correlation.session</code></td>
+</tr>
+<tr>
+<td>Gauge data point</td>
+<td>metrics sample, <code>kind: gauge</code></td>
+</tr>
+<tr>
+<td>Sum data point, cumulative</td>
+<td>metrics sample, <code>kind: counter</code>, <code>reset_time</code> = the point's start time</td>
+</tr>
+<tr>
+<td>Sum data point, delta</td>
+<td>metrics sample, <code>kind: delta</code></td>
+</tr>
+<tr>
+<td>Histogram data point</td>
+<td>rollup samples with <code>aggregation</code> <code>count</code>, <code>sum</code>, <code>min</code> and <code>max</code></td>
+</tr>
+<tr>
+<td>Instrument unit</td>
+<td><code>unit</code> (OpenTelemetry units are already UCUM)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Ids.</strong> Build <code>id</code> from stable inputs (trace id, span id and event index, or a hash of the record), so a re-export publishes the same id and idempotent publish (§3) drops the repeat.</li>
+<li><strong>Batching.</strong> Put the data points of one export into one metrics envelope per resource, not one envelope per point.</li>
+</ul></main><footer>Open Semantic Agent spec 0.3 (draft) · Apache-2.0 · <a href="https://github.com/opensemanticagent/opensemanticagent">Source</a></footer></body></html>

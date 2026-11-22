@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://opensemanticagent.org/schemas/stream.schema.json",
-  "title": "Open Semantic Agent WebSocket stream messages (SPEC 0.2 §9.3)",
+  "title": "Open Semantic Agent WebSocket stream messages (SPEC 0.3 §9.3)",
   "description": "Each WebSocket text frame holds one of these objects. client_op: client to server. server_message: server to client.",
   "oneOf": [
     {
@@ -48,6 +48,10 @@
         },
         "arguments": {
           "type": "object"
+        },
+        "resume_after": {
+          "type": "string",
+          "description": "Resume after this envelope id (0.3)"
         }
       }
     },
@@ -90,6 +94,9 @@
         "result": {},
         "error": {
           "type": "string"
+        },
+        "replay_window": {
+          "description": "Replay window per attached subscription (0.3)"
         }
       },
       "allOf": [

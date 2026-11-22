@@ -33,7 +33,8 @@ TOOLS = [
                                     "limit": {"type": "integer", "minimum": 1, "maximum": 100}}}},
     {"name": "osa_get_schema",
      "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
-     "description": "Return an OSA JSON Schema: envelope, subscription (manifest), audit (record) or stream (messages).",
+     "description": "Return an OSA JSON Schema: envelope, subscription (manifest), audit (record), stream (messages), "
+                    "metrics (data of a metrics envelope) or alert (data of an alert envelope).",
      "inputSchema": {"type": "object", "required": ["name"], "properties": {"name": _KINDS}}},
     {"name": "osa_validate",
      "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},

@@ -10,9 +10,10 @@ from functools import cache, lru_cache
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
 
 _HERE = Path(__file__).resolve().parent
-SCHEMA_NAMES = ("envelope", "subscription", "audit", "stream")
+SCHEMA_NAMES = ("envelope", "subscription", "audit", "stream", "metrics", "alert")
 
 
 def _paths() -> dict[str, Path]:
@@ -87,9 +88,16 @@ def schema(name: str) -> dict:
     return json.loads((_paths()["schemas"] / f"{name}.schema.json").read_text(encoding="utf-8"))
 
 
+@cache
+def _registry() -> Registry:
+    """Every bundled schema under its $id, so cross-schema $refs resolve locally, never over the network."""
+    return Registry().with_resources(
+        (schema(n)["$id"], Resource.from_contents(schema(n))) for n in SCHEMA_NAMES)
+
+
 def validate(kind: str, document) -> dict:
     """Validate a document against one of the OSA schemas. Returns every error, not just the first."""
-    v = Draft202012Validator(schema(kind))
+    v = Draft202012Validator(schema(kind), registry=_registry())
     errors = [{"path": "/" + "/".join(str(p) for p in e.absolute_path), "message": e.message}
               for e in sorted(v.iter_errors(document), key=lambda e: list(map(str, e.absolute_path)))]
     return {"kind": kind, "valid": not errors, "errors": errors}
