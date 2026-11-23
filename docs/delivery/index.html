@@ -61,7 +61,7 @@ h2 { margin: 0; font: 700 26px/1.15 var(--display); letter-spacing: -.01em; }
 .case p { margin: 0; color: var(--muted); font-size: 14px; }
 .case code, .note code { font: 12.5px var(--mono); background: var(--bg); padding: 1px 5px; border-radius: 5px; color: var(--ink); }
 .case ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; display: grid; gap: 3px; }
-.note { background: var(--surface); border: 1px dashed var(--c-notify); border-radius: 16px; padding: 18px; display: grid; gap: 8px; }
+.note { background: var(--surface); border: 1px solid var(--c-notify); border-radius: 16px; padding: 18px; display: grid; gap: 8px; }
 .note h3 { margin: 0; font: 700 18px var(--display); }
 .note p { margin: 0; color: var(--muted); }
 footer { color: var(--muted); font-size: 13px; }
@@ -80,19 +80,18 @@ body { margin: 0; }
 <div class="wrap">
   <nav class="sitebar" aria-label="Site"><a class="home" href="../">Open Semantic Agent</a><a href="../spec/">Spec</a><a href="./" aria-current="page">Delivery map</a><a href="../guides/osa-legacy-systems.pdf">Legacy systems (PDF)</a><a href="https://github.com/opensemanticagent/opensemanticagent">GitHub</a></nav>
   <header>
-    <span class="eyebrow">Open Semantic Agent · spec 0.4</span>
+    <span class="eyebrow">Open Semantic Agent · spec 0.5</span>
     <h1>Every way in and out of the bus</h1>
-    <p class="lede">Producers publish one envelope format onto the transport you already run. The OSA bus decides who gets what (topic match first, then similarity, then an AI judge only when unsure) and hands it out by pub/sub, pull, live streams or tool calls. Alerts and recommendations ride the same path.</p>
+    <p class="lede">Producers publish one envelope format onto the transport you already run. The OSA bus decides who gets what (topic match first, then similarity, then an AI judge only when unsure) and hands it out by pub/sub, pull, live streams or tool calls. Alerts and recommendations ride the same path, and since 0.5 the bus can also tell a person on their phone or by email.</p>
     <div class="legend" aria-label="Legend">
       <span><svg viewBox="0 0 36 8" aria-hidden="true"><line x1="2" y1="4" x2="34" y2="4" stroke="var(--hub)" stroke-width="2.5" stroke-linecap="round"/></svg>Defined in the spec</span>
-      <span><svg viewBox="0 0 36 8" aria-hidden="true"><line x1="2" y1="4" x2="34" y2="4" stroke="var(--c-notify)" stroke-width="2.5" stroke-dasharray="6 6" stroke-linecap="round"/></svg>Built by an implementation, not in the spec</span>
       <span><svg viewBox="0 0 36 8" aria-hidden="true"><circle cx="18" cy="4" r="4" fill="var(--hub)"/></svg>A message on its way</span>
     </div>
   </header>
 
   <!-- Hub: producers → transport → OSA → every delivery path -->
   <div class="hub-box">
-    <svg viewBox="0 0 1060 600" role="img" aria-label="Producers publish through a transport into the OSA bus, which delivers by pub/sub, pull, SSE, WebSocket, MCP and A2A; alerts and recommendations flow out the same way; push notifications are left to implementations.">
+    <svg viewBox="0 0 1060 600" role="img" aria-label="Producers publish through a transport into the OSA bus, which delivers by pub/sub, pull, SSE, WebSocket, MCP and A2A; alerts and recommendations flow out the same way, and notifications reach people by Web Push, APNs, FCM or email.">
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
       </defs>
@@ -146,9 +145,9 @@ body { margin: 0; }
       <path id="p-a2" class="flow" stroke="var(--c-rec)" d="M440 463 L480 463"/>
       <path id="p-a3" class="flow" stroke="var(--c-rec)" d="M710 463 L760 463"/>
       <!-- notifications: implementation-defined -->
-      <rect class="node" x="760" y="520" width="280" height="62" rx="14" style="stroke:var(--c-notify);stroke-dasharray:6 5"/>
-      <text x="776" y="545" class="t-head" font-size="14">Phone &amp; email push</text><text x="776" y="565" class="t-mono">Web Push, APNs, email · not in spec</text>
-      <path id="p-n1" class="flow dash" stroke="var(--c-notify)" d="M600 496 C600 551 700 551 760 551"/>
+      <rect class="node" x="760" y="520" width="280" height="62" rx="14" style="stroke:var(--c-notify)"/>
+      <text x="776" y="545" class="t-head" font-size="14">Notifications</text><text x="776" y="565" class="t-mono">Web Push, APNs, FCM, email · §9.4</text>
+      <path id="p-n1" class="flow" stroke="var(--c-notify)" d="M600 496 C600 551 700 551 760 551"/>
       <text x="20" y="470" class="t-muted">Same envelope, same routing:</text>
       <text x="20" y="488" class="t-muted">alerts and advice travel the bus too.</text>
       <!-- moving messages -->
@@ -208,8 +207,8 @@ body { margin: 0; }
   <div class="cases" id="cases"></div>
 
   <div class="note">
-    <h3>About notifications</h3>
-    <p>OSA delivers to subscribers; it does not send phone or email notifications itself. An implementation adds them by subscribing to <code>alert.*</code> over a stream and handing each alert to Web Push, APNs or email, as the dashed paths show. A standard notification binding could be proposed for a future version.</p>
+    <h3>New in 0.5: notifications</h3>
+    <p>A subscription adds <code>delivery.notify</code> with channels and rules, and the bus tells the right person once per condition. Each attempt becomes a notification envelope (sent, failed, acknowledged or expired), so <code>history(["notification.*"])</code> shows who was told and whether they saw it. Web Push has an exact binding; APNs, FCM and email are mapped.</p>
   </div>
 
   <footer>Spec, schemas and conformance fixtures: <a href="../">opensemanticagent.org</a> · <a href="https://github.com/opensemanticagent/opensemanticagent">github.com/opensemanticagent/opensemanticagent</a> · Apache-2.0</footer>
@@ -242,9 +241,9 @@ const CASES = [
   { id: "a2a", title: "A2A agent", color: "--c-a2a", tag: ["opt", "§9.2 optional"], from: ["Agent", "A2A client"], via: "delegates", to: ["Bus", "as an agent"], two: true,
     text: "The bus can register as an A2A agent, so other agents delegate to it directly.",
     facts: ["Same skills as the MCP tools", "Same audit trail"] },
-  { id: "notify", title: "Phone & email notifications", color: "--c-notify", tag: ["not", "not in spec"], from: ["Bus", "alert.* stream"], via: "your subscriber", to: ["Phone", "push · email"], dashed: true,
-    text: "Not part of OSA today. An implementation subscribes to alerts and sends its own push or email, for example with the top recommendation in the text.",
-    facts: ["Keep it a subscriber, so the bus stays the source of truth", "Candidate for a future binding"] },
+  { id: "notify", title: "Notifications", color: "--c-notify", tag: ["opt", "§9.4 · 0.5"], from: ["Bus", "matched alert"], via: "delivery.notify", to: ["Person", "push · email"], two: true,
+    text: "A subscription can tell people on Web Push, APNs, FCM or email: once per condition, with cooldown, quiet hours and escalation. Every attempt is recorded, and \"Did this\" from the phone closes the advice.",
+    facts: ["Never secrets or commands; content only over end-to-end encrypted channels", "Critical and strict alerts never wait on a model or a budget"] },
 ];
 const svgFor = (c) => {
   const col = `var(${c.color})`, dash = c.dashed ? ' stroke-dasharray="6 6"' : "";

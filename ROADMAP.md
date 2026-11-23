@@ -6,7 +6,7 @@
 | **0.3** | Nov 2026 | Metrics envelopes with batched samples, units and rollups; alerts; subject, correlation and sensitivity on the envelope; stream resume; read-only history and metrics query tools with tool annotations; OpenTelemetry mapping; 0.3 conformance fixtures |
 | **0.3.x** | Q1 2027 | Conformance runner that any implementation can use against the fixtures; L2 fixtures for schema mediation, digests and dead-letter repair; first external implementation listed |
 | **0.4** | Nov 2026 | Recommendations: advice linked to the alert it answers, with ranked actions, evidence, provenance and a lifecycle; 0.4 conformance fixtures |
-| **0.5** (current draft) | Q2 2027 | Notifications: telling people on their phone or by email, with shared rules, records and a Web Push binding (#15); transport bindings (Kafka, NATS, Redis Streams, SQS) as informative annexes; multi-tenant budgets; signed audit records |
+| **0.5** (current draft) | Nov 2026 – Q2 2027 | Released in 0.5.0: notifications, telling people on their phone or by email, with shared rules, records and a Web Push binding (#15). Still to come in 0.5: transport bindings (Kafka, NATS, Redis Streams, SQS) as informative annexes; multi-tenant budgets; signed audit records |
 | **1.0** | late 2027 | Stability freeze, three independent implementations, neutral governance (see `GOVERNANCE.md`) |
 
 Open questions are tracked as issues labelled `spec` and in GitHub Discussions.
