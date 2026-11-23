@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
 _HERE = Path(__file__).resolve().parent
-SCHEMA_NAMES = ("envelope", "subscription", "audit", "stream", "metrics", "alert")
+SCHEMA_NAMES = ("envelope", "subscription", "audit", "stream", "metrics", "alert", "recommendation")
 
 
 def _paths() -> dict[str, Path]:

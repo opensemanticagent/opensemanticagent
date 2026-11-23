@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "open-semantic-agent"
-version = "0.3.0"
+version = "0.4.0"
 description = "Open Semantic Agent (OSA) spec as an MCP server: read the spec, get the JSON Schemas and conformance fixtures, validate documents."
 readme = "README.md"
 license = "Apache-2.0"

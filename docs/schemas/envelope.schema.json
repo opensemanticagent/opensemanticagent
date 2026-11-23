@@ -178,6 +178,25 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "content_type": {
+            "const": "application/vnd.osa.recommendation+json"
+          }
+        },
+        "required": [
+          "content_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "https://opensemanticagent.org/schemas/recommendation.schema.json"
+          }
+        }
+      }
     }
   ]
 }
