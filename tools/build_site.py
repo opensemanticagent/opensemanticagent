@@ -62,7 +62,7 @@ footer{max-width:900px;margin:40px auto;padding:16px 20px;border-top:1px solid v
 @media (max-width:640px){.flow{grid-template-columns:1fr}.hero h1{font-size:1.9rem}}
 """
 
-NAV = [("", "Home"), ("spec/", "Spec"), ("schemas/envelope.schema.json", "Schemas"), ("privacy/", "Privacy")]
+NAV = [("", "Home"), ("spec/", "Spec"), ("delivery/", "Delivery map"), ("schemas/envelope.schema.json", "Schemas"), ("privacy/", "Privacy")]
 
 
 def shell(depth, title, body_html, description):
@@ -128,6 +128,8 @@ vectors let you check an implementation against it.</p>
 <a href="schemas/metrics.schema.json">metrics</a>, <a href="schemas/alert.schema.json">alert</a>,
 <a href="schemas/recommendation.schema.json">recommendation</a></li>
 <li><a href="{repo}/tree/main/conformance/fixtures">Conformance test vectors</a></li>
+<li><a href="delivery/">Delivery map</a>: every way in and out of the bus, case by case</li>
+<li><a href="guides/osa-legacy-systems.pdf">OSA with legacy systems</a> (8-slide PDF)</li>
 </ul>
 
 <h2 id="contribute">Contribute</h2>

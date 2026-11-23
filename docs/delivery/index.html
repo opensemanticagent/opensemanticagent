@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delivery map · Open Semantic Agent</title>
+<meta name="description" content="How messages enter and leave an Open Semantic Agent bus: pub/sub, pull, Server-Sent Events, WebSocket, MCP, A2A, alerts and recommendations, and what the spec does not define.">
+<link rel="canonical" href="https://opensemanticagent.org/delivery/">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one hub diagram (every way in and out of the bus), then one card per delivery case, each with its own animated flow. */
+:root {
+  --bg: #f5f4fa; --surface: #ffffff; --ink: #1a1730; --muted: #5c5874; --line: #dcd9e8; --hub: #5b21b6; --hub-soft: #ede7fb;
+  --c-transport: #1d4ed8; --c-pull: #475569; --c-sse: #0f766e; --c-ws: #0e7490; --c-mcp: #6d28d9; --c-a2a: #7c3aed;
+  --c-alert: #b45309; --c-rec: #15803d; --c-notify: #be185d;
+  --display: "Space Grotesk", "Helvetica Neue", system-ui, sans-serif; --body: "Inter", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121020; --surface: #1c1930; --ink: #ecebf5; --muted: #a8a4bf; --line: #34304b; --hub: #a78bfa; --hub-soft: #2a2250;
+  --c-transport: #60a5fa; --c-pull: #94a3b8; --c-sse: #2dd4bf; --c-ws: #22d3ee; --c-mcp: #a78bfa; --c-a2a: #c4b5fd;
+  --c-alert: #fbbf24; --c-rec: #4ade80; --c-notify: #f472b6; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121020; --surface: #1c1930; --ink: #ecebf5; --muted: #a8a4bf; --line: #34304b; --hub: #a78bfa; --hub-soft: #2a2250;
+  --c-transport: #60a5fa; --c-pull: #94a3b8; --c-sse: #2dd4bf; --c-ws: #22d3ee; --c-mcp: #a78bfa; --c-a2a: #c4b5fd;
+  --c-alert: #fbbf24; --c-rec: #4ade80; --c-notify: #f472b6; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--hub); }
+h1 { margin: 0; font: 700 clamp(30px, 5vw, 48px)/1.05 var(--display); letter-spacing: -.02em; text-wrap: balance; }
+.lede { margin: 0; max-width: 68ch; color: var(--muted); font-size: 17px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend svg { width: 36px; height: 8px; }
+.hub-box { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px; overflow-x: auto; }
+.hub-box svg { display: block; width: 100%; min-width: 760px; height: auto; }
+svg text { font-family: var(--body); fill: var(--ink); }
+svg .t-muted { fill: var(--muted); font-size: 12px; }
+svg .t-mono { font-family: var(--mono); font-size: 11.5px; fill: var(--muted); }
+svg .t-head { font-family: var(--display); font-weight: 700; }
+.node { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+.hub { fill: var(--hub-soft); stroke: var(--hub); stroke-width: 2; }
+.flow { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+.flow.dash { stroke-dasharray: 6 6; }
+.dot { r: 5; }
+h2 { margin: 0; font: 700 26px/1.15 var(--display); letter-spacing: -.01em; }
+.section-head { display: grid; gap: 6px; }
+.section-head p { margin: 0; color: var(--muted); max-width: 70ch; }
+.cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.case { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.case-head { display: flex; align-items: center; gap: 10px; }
+.swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.case h3 { margin: 0; flex: 1; font: 700 18px/1.2 var(--display); }
+.tag { font: 600 11px/1 var(--mono); padding: 5px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.spec { color: var(--c-rec); border-color: currentColor; }
+.tag.opt { color: var(--c-transport); border-color: currentColor; }
+.tag.not { color: var(--c-notify); border-color: currentColor; border-style: dashed; }
+.case svg { width: 100%; height: auto; display: block; }
+.case p { margin: 0; color: var(--muted); font-size: 14px; }
+.case code, .note code { font: 12.5px var(--mono); background: var(--bg); padding: 1px 5px; border-radius: 5px; color: var(--ink); }
+.case ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; display: grid; gap: 3px; }
+.note { background: var(--surface); border: 1px dashed var(--c-notify); border-radius: 16px; padding: 18px; display: grid; gap: 8px; }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note p { margin: 0; color: var(--muted); }
+footer { color: var(--muted); font-size: 13px; }
+footer a { color: var(--hub); }
+@media (prefers-reduced-motion: reduce) { .moving { display: none; } }
+</style>
+
+<style>
+body { margin: 0; }
+.sitebar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font: 500 14px var(--body); }
+.sitebar a { color: var(--muted); text-decoration: none; } .sitebar a:hover { color: var(--hub); }
+.sitebar .home { font-weight: 700; color: var(--ink); margin-right: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="sitebar" aria-label="Site"><a class="home" href="../">Open Semantic Agent</a><a href="../spec/">Spec</a><a href="./" aria-current="page">Delivery map</a><a href="../guides/osa-legacy-systems.pdf">Legacy systems (PDF)</a><a href="https://github.com/opensemanticagent/opensemanticagent">GitHub</a></nav>
+  <header>
+    <span class="eyebrow">Open Semantic Agent · spec 0.4</span>
+    <h1>Every way in and out of the bus</h1>
+    <p class="lede">Producers publish one envelope format onto the transport you already run. The OSA bus decides who gets what (topic match first, then similarity, then an AI judge only when unsure) and hands it out by pub/sub, pull, live streams or tool calls. Alerts and recommendations ride the same path.</p>
+    <div class="legend" aria-label="Legend">
+      <span><svg viewBox="0 0 36 8" aria-hidden="true"><line x1="2" y1="4" x2="34" y2="4" stroke="var(--hub)" stroke-width="2.5" stroke-linecap="round"/></svg>Defined in the spec</span>
+      <span><svg viewBox="0 0 36 8" aria-hidden="true"><line x1="2" y1="4" x2="34" y2="4" stroke="var(--c-notify)" stroke-width="2.5" stroke-dasharray="6 6" stroke-linecap="round"/></svg>Built by an implementation, not in the spec</span>
+      <span><svg viewBox="0 0 36 8" aria-hidden="true"><circle cx="18" cy="4" r="4" fill="var(--hub)"/></svg>A message on its way</span>
+    </div>
+  </header>
+
+  <!-- Hub: producers → transport → OSA → every delivery path -->
+  <div class="hub-box">
+    <svg viewBox="0 0 1060 600" role="img" aria-label="Producers publish through a transport into the OSA bus, which delivers by pub/sub, pull, SSE, WebSocket, MCP and A2A; alerts and recommendations flow out the same way; push notifications are left to implementations.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
+      </defs>
+      <!-- producers -->
+      <text x="20" y="40" class="t-head" font-size="15">Producers</text>
+      <rect class="node" x="20" y="60" width="170" height="58" rx="12"/><text x="36" y="86" font-weight="600" font-size="14">Services &amp; apps</text><text x="36" y="105" class="t-muted">orders, payments, CI</text>
+      <rect class="node" x="20" y="134" width="170" height="58" rx="12"/><text x="36" y="160" font-weight="600" font-size="14">Devices &amp; sensors</text><text x="36" y="179" class="t-muted">readings, faults</text>
+      <rect class="node" x="20" y="208" width="170" height="58" rx="12"/><text x="36" y="234" font-weight="600" font-size="14">AI agents</text><text x="36" y="253" class="t-muted">tool calls, results</text>
+      <rect class="node" x="20" y="282" width="170" height="58" rx="12"/><text x="36" y="308" font-weight="600" font-size="14">Monitors</text><text x="36" y="327" class="t-muted">metrics → alerts</text>
+      <!-- transport -->
+      <rect class="node" x="240" y="120" width="150" height="160" rx="14" style="stroke:var(--c-transport)"/>
+      <text x="256" y="148" class="t-head" font-size="14">Your transport</text>
+      <text x="256" y="174" class="t-mono">Kafka</text><text x="256" y="194" class="t-mono">NATS</text><text x="256" y="214" class="t-mono">Redis Streams</text><text x="256" y="234" class="t-mono">SQS</text>
+      <text x="256" y="262" class="t-muted">TransportAdapter §7</text>
+      <path id="p-in1" class="flow" stroke="var(--c-transport)" d="M190 89 C215 89 215 170 240 170"/>
+      <path id="p-in2" class="flow" stroke="var(--c-transport)" d="M190 163 C215 163 215 190 240 190"/>
+      <path id="p-in3" class="flow" stroke="var(--c-transport)" d="M190 237 C215 237 215 210 240 210"/>
+      <path id="p-in4" class="flow" stroke="var(--c-alert)" d="M190 311 C215 311 215 230 240 230"/>
+      <!-- hub -->
+      <rect class="hub" x="440" y="96" width="210" height="208" rx="22"/>
+      <text x="545" y="130" text-anchor="middle" class="t-head" font-size="22" style="fill:var(--hub)">OSA bus</text>
+      <rect class="node" x="462" y="146" width="166" height="38" rx="9"/><text x="478" y="170" font-size="13" font-weight="600">1 Topic match</text><text x="612" y="170" text-anchor="end" class="t-mono">free</text>
+      <rect class="node" x="462" y="192" width="166" height="38" rx="9"/><text x="478" y="216" font-size="13" font-weight="600">2 Similarity</text><text x="612" y="216" text-anchor="end" class="t-mono">cheap</text>
+      <rect class="node" x="462" y="238" width="166" height="38" rx="9"/><text x="478" y="262" font-size="13" font-weight="600">3 AI judge</text><text x="612" y="262" text-anchor="end" class="t-mono">if unsure</text>
+      <text x="545" y="296" text-anchor="middle" class="t-muted">audited · replayable</text>
+      <path id="p-core" class="flow" stroke="var(--hub)" d="M390 200 L440 200" marker-end="url(#ah)"/>
+      <!-- outputs -->
+      <text x="760" y="40" class="t-head" font-size="15">Consumers</text>
+      <g font-size="14">
+        <rect class="node" x="760" y="56" width="280" height="50" rx="12"/><text x="776" y="80" font-weight="600">Pub/sub subscribers</text><text x="776" y="97" class="t-mono">by topic or by intent · §4</text>
+        <rect class="node" x="760" y="114" width="280" height="50" rx="12"/><text x="776" y="138" font-weight="600">Pull</text><text x="776" y="155" class="t-mono">consume(subscriber, n) · §9.1</text>
+        <rect class="node" x="760" y="172" width="280" height="50" rx="12"/><text x="776" y="196" font-weight="600">Server-Sent Events</text><text x="776" y="213" class="t-mono">one-way, browsers · §9.3</text>
+        <rect class="node" x="760" y="230" width="280" height="50" rx="12"/><text x="776" y="254" font-weight="600">WebSocket</text><text x="776" y="271" class="t-mono">two-way, publish + tools · §9.3</text>
+        <rect class="node" x="760" y="288" width="280" height="50" rx="12"/><text x="776" y="312" font-weight="600">MCP tools</text><text x="776" y="329" class="t-mono">agents ask, brief, query · §9.1</text>
+        <rect class="node" x="760" y="346" width="280" height="50" rx="12"/><text x="776" y="370" font-weight="600">A2A agent</text><text x="776" y="387" class="t-mono">optional · §9.2</text>
+      </g>
+      <path id="p-o1" class="flow" stroke="var(--c-transport)" d="M650 150 C705 150 705 81 760 81"/>
+      <path id="p-o2" class="flow" stroke="var(--c-pull)" d="M650 170 C705 170 705 139 760 139"/>
+      <path id="p-o3" class="flow" stroke="var(--c-sse)" d="M650 190 C705 190 705 197 760 197"/>
+      <path id="p-o4" class="flow" stroke="var(--c-ws)" d="M650 210 C705 210 705 255 760 255"/>
+      <path id="p-o5" class="flow" stroke="var(--c-mcp)" d="M650 232 C705 232 705 313 760 313"/>
+      <path id="p-o6" class="flow" stroke="var(--c-a2a)" d="M650 254 C705 254 705 371 760 371"/>
+      <!-- alerts & recommendations lane -->
+      <rect class="node" x="240" y="430" width="200" height="66" rx="14" style="stroke:var(--c-alert)"/>
+      <text x="256" y="456" class="t-head" font-size="14">Alert</text><text x="256" y="476" class="t-mono">alert.disk.falling</text>
+      <rect class="node" x="480" y="430" width="230" height="66" rx="14" style="stroke:var(--c-rec)"/>
+      <text x="496" y="456" class="t-head" font-size="14">Recommendation</text><text x="496" y="476" class="t-mono">recommendation.disk.falling</text>
+      <rect class="node" x="760" y="430" width="280" height="66" rx="14" style="stroke:var(--c-rec)"/>
+      <text x="776" y="456" class="t-head" font-size="14">Outcome</text><text x="776" y="476" class="t-mono">done / dismissed · §6.11</text>
+      <path id="p-a1" class="flow" stroke="var(--c-alert)" d="M545 304 C545 380 340 380 340 430"/>
+      <path id="p-a2" class="flow" stroke="var(--c-rec)" d="M440 463 L480 463"/>
+      <path id="p-a3" class="flow" stroke="var(--c-rec)" d="M710 463 L760 463"/>
+      <!-- notifications: implementation-defined -->
+      <rect class="node" x="760" y="520" width="280" height="62" rx="14" style="stroke:var(--c-notify);stroke-dasharray:6 5"/>
+      <text x="776" y="545" class="t-head" font-size="14">Phone &amp; email push</text><text x="776" y="565" class="t-mono">Web Push, APNs, email · not in spec</text>
+      <path id="p-n1" class="flow dash" stroke="var(--c-notify)" d="M600 496 C600 551 700 551 760 551"/>
+      <text x="20" y="470" class="t-muted">Same envelope, same routing:</text>
+      <text x="20" y="488" class="t-muted">alerts and advice travel the bus too.</text>
+      <!-- moving messages -->
+      <g class="moving">
+        <circle class="dot" r="5" fill="var(--c-transport)"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#p-in1"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-transport)"><animateMotion dur="2.4s" begin="-0.6s" repeatCount="indefinite"><mpath href="#p-in2"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-transport)"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#p-in3"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-alert)"><animateMotion dur="2.4s" begin="-1.8s" repeatCount="indefinite"><mpath href="#p-in4"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--hub)"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#p-core"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-transport)"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#p-o1"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-pull)"><animateMotion dur="2.2s" begin="-0.3s" repeatCount="indefinite"><mpath href="#p-o2"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-sse)"><animateMotion dur="2.2s" begin="-0.6s" repeatCount="indefinite"><mpath href="#p-o3"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-ws)"><animateMotion dur="2.2s" begin="-0.9s" repeatCount="indefinite"><mpath href="#p-o4"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-ws)"><animateMotion dur="2.2s" begin="-2s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#p-o4"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-mcp)"><animateMotion dur="2.2s" begin="-1.2s" repeatCount="indefinite"><mpath href="#p-o5"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-a2a)"><animateMotion dur="2.2s" begin="-1.5s" repeatCount="indefinite"><mpath href="#p-o6"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-alert)"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#p-a1"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-rec)"><animateMotion dur="1.3s" begin="-0.4s" repeatCount="indefinite"><mpath href="#p-a2"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-rec)"><animateMotion dur="1.3s" begin="-0.9s" repeatCount="indefinite"><mpath href="#p-a3"/></animateMotion></circle>
+        <circle class="dot" r="5" fill="var(--c-notify)"><animateMotion dur="2.4s" begin="-0.5s" repeatCount="indefinite"><mpath href="#p-n1"/></animateMotion></circle>
+      </g>
+    </svg>
+  </div>
+
+  <section class="section-head">
+    <h2>Requests go around the bus</h2>
+    <p>OSA is for events, not for calls a user is waiting on (spec Appendix A.1). The app calls the service directly and gets its answer fast. Only after the work is done does the service publish what happened, and slower results come back to the app by push.</p>
+  </section>
+  <div class="hub-box">
+    <svg viewBox="0 0 1060 230" role="img" aria-label="The user's app calls the service directly. After the work, the service publishes an event through the transport into the OSA bus. Slower results return to the app over SSE or WebSocket.">
+      <rect class="node" x="20" y="40" width="190" height="62" rx="12"/><text x="36" y="66" font-weight="600" font-size="14">User's app</text><text x="36" y="86" class="t-muted">waiting on an answer</text>
+      <rect class="node" x="350" y="40" width="200" height="62" rx="12"/><text x="366" y="66" font-weight="600" font-size="14">Service</text><text x="366" y="86" class="t-mono">get orders · pay invoice</text>
+      <rect class="node" x="620" y="40" width="160" height="62" rx="12" style="stroke:var(--c-transport)"/><text x="636" y="66" font-weight="600" font-size="14">Your transport</text><text x="636" y="86" class="t-mono">Kafka · NATS · SQS</text>
+      <rect class="hub" x="850" y="34" width="190" height="74" rx="18"/><text x="945" y="66" text-anchor="middle" class="t-head" font-size="18" style="fill:var(--hub)">OSA bus</text><text x="945" y="88" text-anchor="middle" class="t-muted">routes, alerts, advice</text>
+      <path id="r-req" class="flow" stroke="var(--c-pull)" d="M210 62 L350 62"/>
+      <path id="r-res" class="flow" stroke="var(--c-pull)" d="M350 80 L210 80"/>
+      <text x="280" y="30" text-anchor="middle" class="t-muted">request · response, direct</text>
+      <path id="r-pub" class="flow" stroke="var(--c-transport)" d="M550 71 L620 71"/>
+      <path id="r-bus" class="flow" stroke="var(--hub)" d="M780 71 L850 71"/>
+      <text x="700" y="128" text-anchor="middle" class="t-muted">then publishes what happened</text>
+      <path id="r-push" class="flow" stroke="var(--c-sse)" d="M945 108 L945 170 Q945 190 925 190 L135 190 Q115 190 115 170 L115 102"/>
+      <text x="530" y="215" text-anchor="middle" class="t-muted">slower results come back by push: SSE or WebSocket (§9.3)</text>
+      <g class="moving">
+        <circle r="5" fill="var(--c-pull)"><animateMotion dur="0.9s" repeatCount="indefinite"><mpath href="#r-req"/></animateMotion></circle>
+        <circle r="5" fill="var(--c-pull)"><animateMotion dur="0.9s" begin="-0.45s" repeatCount="indefinite"><mpath href="#r-res"/></animateMotion></circle>
+        <circle r="5" fill="var(--c-transport)"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#r-pub"/></animateMotion></circle>
+        <circle r="5" fill="var(--hub)"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#r-bus"/></animateMotion></circle>
+        <circle r="5" fill="var(--c-sse)"><animateMotion dur="3.6s" repeatCount="indefinite"><mpath href="#r-push"/></animateMotion></circle>
+      </g>
+    </svg>
+  </div>
+
+  <section class="section-head">
+    <h2>Each case, on its own</h2>
+    <p>Every case below follows one message: where it starts, what the bus does with it, and where it ends up. The section numbers point into the spec.</p>
+  </section>
+  <div class="cases" id="cases"></div>
+
+  <div class="note">
+    <h3>About notifications</h3>
+    <p>OSA delivers to subscribers; it does not send phone or email notifications itself. An implementation adds them by subscribing to <code>alert.*</code> over a stream and handing each alert to Web Push, APNs or email, as the dashed paths show. A standard notification binding could be proposed for a future version.</p>
+  </div>
+
+  <footer>Spec, schemas and conformance fixtures: <a href="../">opensemanticagent.org</a> · <a href="https://github.com/opensemanticagent/opensemanticagent">github.com/opensemanticagent/opensemanticagent</a> · Apache-2.0</footer>
+</div>
+
+<script>
+// Each case: left node, what the bus does, right node, plus the facts from the spec. Drawn as a small flow with a moving message.
+const CASES = [
+  { id: "pubsub", title: "Pub/sub on your transport", color: "--c-transport", tag: ["spec", "§4 · §7"], from: ["Service", "publish"], via: "3 checks", to: ["Subscriber", "topics or intent"],
+    text: "Publish to Kafka, NATS, Redis Streams or SQS through a TransportAdapter. Subscribers declare topics, an intent in plain words, or both.",
+    facts: ["<code>hints.strict: true</code> keeps a message at topic match only", "Semantic dedupe and digests for slow consumers"] },
+  { id: "pull", title: "Pull with consume", color: "--c-pull", tag: ["spec", "§9.1"], from: ["Queue", "per subscriber"], via: "queued", to: ["Worker", "consume(n)"],
+    text: "A consumer asks for its next items when it is ready, through the MCP tool <code>consume</code>.",
+    facts: ["Same items and order as a stream", "Good for batch jobs and cron workers"] },
+  { id: "sse", title: "Server-Sent Events", color: "--c-sse", tag: ["opt", "§9.3 optional"], from: ["Bus", "/stream"], via: "message · digest", to: ["Browser", "EventSource"],
+    text: "A one-way live stream any browser can open. Each delivery is one event whose id is the envelope id.",
+    facts: ["Heartbeat comments every 30 s or less", "Resume with <code>Last-Event-ID</code> inside a replay window (0.3)"] },
+  { id: "ws", title: "WebSocket", color: "--c-ws", tag: ["opt", "§9.3 optional"], from: ["App", "sub · pub · call"], via: "two-way", to: ["Bus", "/ws"], two: true,
+    text: "A two-way socket: attach subscriptions, publish envelopes and call any MCP tool over one connection.",
+    facts: ["Ephemeral subscriptions end with the socket", "Resume with <code>resume_after</code> (0.3)"] },
+  { id: "mcp", title: "MCP tools for agents", color: "--c-mcp", tag: ["spec", "§9.1, L1+"], from: ["AI agent", "MCP client"], via: "tool call", to: ["Bus", "publish · ask"], two: true,
+    text: "Any MCP client can publish, subscribe, ask for a briefing or look back with <code>history</code> and <code>metrics_query</code>.",
+    facts: ["Tool annotations say which tools only read", "Answers get the caller's clearance and redaction"] },
+  { id: "alerts", title: "Alerts", color: "--c-alert", tag: ["opt", "§6.10 · 0.3"], from: ["Monitor", "limit crossed"], via: "alert.<kind>", to: ["On-call", "firing → resolved"],
+    text: "An alert opens or closes one condition per <code>dedupe_key</code>, with severity info, warning or critical.",
+    facts: ["Topics <code>alert.&lt;kind&gt;</code> match at Tier 0, free", "Safety alerts are strict: no model, no budget in the way"] },
+  { id: "recs", title: "Recommendations", color: "--c-rec", tag: ["opt", "§6.11 · 0.4"], from: ["Alert", "firing"], via: "ranked actions", to: ["Person", "done · dismissed"], two: true,
+    text: "Advice linked to its alert: actions with expected effect, effort and whether they can be undone. The outcome comes back on the bus.",
+    facts: ["<code>recommendation.&lt;alert&gt;</code>, parent = the alert id", "Outcomes let tools learn which advice helps"] },
+  { id: "a2a", title: "A2A agent", color: "--c-a2a", tag: ["opt", "§9.2 optional"], from: ["Agent", "A2A client"], via: "delegates", to: ["Bus", "as an agent"], two: true,
+    text: "The bus can register as an A2A agent, so other agents delegate to it directly.",
+    facts: ["Same skills as the MCP tools", "Same audit trail"] },
+  { id: "notify", title: "Phone & email notifications", color: "--c-notify", tag: ["not", "not in spec"], from: ["Bus", "alert.* stream"], via: "your subscriber", to: ["Phone", "push · email"], dashed: true,
+    text: "Not part of OSA today. An implementation subscribes to alerts and sends its own push or email, for example with the top recommendation in the text.",
+    facts: ["Keep it a subscriber, so the bus stays the source of truth", "Candidate for a future binding"] },
+];
+const svgFor = (c) => {
+  const col = `var(${c.color})`, dash = c.dashed ? ' stroke-dasharray="6 6"' : "";
+  return `<svg viewBox="0 0 340 120" role="img" aria-label="${c.from[0]} to ${c.to[0]} through the OSA bus">
+    <rect class="node" x="2" y="30" width="96" height="60" rx="11"/>
+    <text x="50" y="56" text-anchor="middle" font-size="12.5" font-weight="600">${c.from[0]}</text>
+    <foreignObject x="6" y="62" width="88" height="26"><div xmlns="http://www.w3.org/1999/xhtml" style="font:10px/1.2 var(--mono);color:var(--muted);text-align:center;overflow-wrap:anywhere">${c.from[1]}</div></foreignObject>
+    <rect class="hub" x="128" y="22" width="84" height="76" rx="16"/>
+    <text x="170" y="56" text-anchor="middle" class="t-head" font-size="15" style="fill:var(--hub)">OSA</text>
+    <foreignObject x="131" y="62" width="78" height="32"><div xmlns="http://www.w3.org/1999/xhtml" style="font:9.5px/1.2 var(--mono);color:var(--muted);text-align:center;overflow-wrap:anywhere">${c.via.replace(/</g, "&lt;")}</div></foreignObject>
+    <rect class="node" x="242" y="30" width="96" height="60" rx="11" style="stroke:${c.dashed ? col : "var(--line)"}${c.dashed ? ";stroke-dasharray:5 4" : ""}"/>
+    <text x="290" y="56" text-anchor="middle" font-size="12.5" font-weight="600">${c.to[0]}</text>
+    <foreignObject x="246" y="62" width="88" height="26"><div xmlns="http://www.w3.org/1999/xhtml" style="font:10px/1.2 var(--mono);color:var(--muted);text-align:center;overflow-wrap:anywhere">${c.to[1]}</div></foreignObject>
+    <path id="f-${c.id}" class="flow" stroke="${col}"${dash} d="M98 60 L128 60 M212 60 L242 60" />
+    <path id="m-${c.id}" d="M98 60 L242 60" fill="none" stroke="none"/>
+    <circle r="4.5" fill="${col}" class="moving"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#m-${c.id}"/></animateMotion></circle>
+    ${c.two ? `<circle r="4.5" fill="${col}" class="moving" opacity=".6"><animateMotion dur="2.2s" begin="-1.1s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#m-${c.id}"/></animateMotion></circle>` : ""}
+  </svg>`;
+};
+document.getElementById("cases").innerHTML = CASES.map((c) => `
+  <article class="case" id="${c.id}">
+    <div class="case-head"><span class="swatch" style="background:var(${c.color})"></span><h3>${c.title}</h3><span class="tag ${c.tag[0]}">${c.tag[1]}</span></div>
+    ${svgFor(c)}
+    <p>${c.text}</p>
+    <ul>${c.facts.map((f) => `<li>${f}</li>`).join("")}</ul>
+  </article>`).join("");
+</script>
+</body>
+</html>
