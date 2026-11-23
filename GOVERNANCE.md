@@ -11,7 +11,10 @@ Open Semantic Agent was created by **Sangamesh Hiremath** (GitHub: `sangameshh`)
 ## How decisions are made
 - **Editorial fixes** (typos, clarifications that change no rule): one maintainer approval.
 - **Tooling changes** that don't change behavior defined by the spec: one maintainer approval and CI passing.
-- **Normative changes** (any MUST/SHOULD/MAY, a schema change, or a change to a fixture's expected decisions): a pull request open for comment for at least **14 days**, then accepted by maintainer consensus. The founder breaks ties until there are three or more maintainers.
+- **Normative changes** (any MUST/SHOULD/MAY, a schema change, or a change to a fixture's expected decisions) are decided in a pull request that says whether the change is additive (every envelope, manifest and record valid before stays valid, with the same meaning) or breaking.
+  - **Early stage** (before 1.0 and while no implementation other than the maintainers' own is listed in `IMPLEMENTATIONS.md`): an additive change may be merged by a maintainer once CI passes, without a comment window. Comments are still welcome afterwards and can change the draft before its release.
+  - **Breaking changes**, and every normative change once the early stage ends: the pull request stays open for comment for at least **14 days**, then is accepted by maintainer consensus.
+  - The founder breaks ties until there are three or more maintainers.
 
 ## Path to neutral governance
 1. Once there are three or more independent implementations (`IMPLEMENTATIONS.md`), form a steering group of at least three maintainers from different organizations.
