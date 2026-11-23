@@ -26,7 +26,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 REPO = "https://github.com/opensemanticagent/opensemanticagent"
 DOMAIN = "opensemanticagent.org"
-SPEC_VERSION = "0.4"
+SPEC_VERSION = "0.5"
 GENERATED = ["index.html", "spec", "schemas", "privacy", "favicon.svg", ".nojekyll", "CNAME"]
 
 LOGO = """<svg viewBox="0 0 56 56" width="{s}" height="{s}" role="img" aria-label="Open Semantic Agent logo">
@@ -126,7 +126,8 @@ vectors let you check an implementation against it.</p>
 <li>JSON Schemas: <a href="schemas/envelope.schema.json">envelope</a>, <a href="schemas/subscription.schema.json">subscription</a>,
 <a href="schemas/audit.schema.json">audit</a>, <a href="schemas/stream.schema.json">stream</a>,
 <a href="schemas/metrics.schema.json">metrics</a>, <a href="schemas/alert.schema.json">alert</a>,
-<a href="schemas/recommendation.schema.json">recommendation</a></li>
+<a href="schemas/recommendation.schema.json">recommendation</a>,
+<a href="schemas/notification.schema.json">notification</a></li>
 <li><a href="{repo}/tree/main/conformance/fixtures">Conformance test vectors</a></li>
 <li><a href="delivery/">Delivery map</a>: every way in and out of the bus, case by case</li>
 <li><a href="guides/osa-legacy-systems.pdf">OSA with legacy systems</a> (8-slide PDF)</li>

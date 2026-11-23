@@ -197,6 +197,25 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "content_type": {
+            "const": "application/vnd.osa.notification+json"
+          }
+        },
+        "required": [
+          "content_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "https://opensemanticagent.org/schemas/notification.schema.json"
+          }
+        }
+      }
     }
   ]
 }

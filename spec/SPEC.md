@@ -1,6 +1,6 @@
 # Open Semantic Agent (OSA) Specification
 
-**Version:** 0.4 (draft) · **Status:** RFC · **License:** Apache-2.0 · **Website:** https://opensemanticagent.org
+**Version:** 0.5 (draft) · **Status:** RFC · **License:** Apache-2.0 · **Website:** https://opensemanticagent.org
 
 The key words MUST, SHOULD and MAY are used as in RFC 2119.
 
@@ -86,6 +86,22 @@ delivery:
   digest_window: 5m
   overflow: summarize                         # summarize | drop_oldest | block
   replay_window: 10m                          # optional (0.3): streams may resume within this window (§9.3)
+  notify:                                     # optional (0.5): tell people about matched items (§9.4)
+    channels:
+      - type: webpush                         # webpush | apns | fcm | email
+        recipient: contact://oncall/alice     # resolved by the implementation; never an address or a token
+    when:
+      min_severity: warning                   # info | warning | critical
+      states: [firing]                        # firing | resolved
+      cooldown: 15m                           # per condition
+      max_per_hour: 20
+      quiet_hours: { start: "22:00", end: "07:00", tz: "Asia/Dubai", allow: critical }
+    content:
+      detail: headline                        # headline | summary
+      with_advice: true                       # add the top recommended action (§6.11)
+    escalate:
+      after: 10m                              # if nobody acknowledges
+      to: contact://oncall/backup
 model_policy:
   tier: auto                                  # auto | max_tier_1 | strict
   budget_tokens_per_hour: 200000
@@ -96,6 +112,7 @@ Rules:
 - A manifest MUST declare at least one of `match.topics` or `match.intent`.
 - If both are declared, a message matches when it matches the topic **and** the intent, unless `match.mode: any` is set.
 - The bus MUST NOT deliver a payload that exceeds the subscriber's `clearance`.
+- `delivery.notify` (0.5) MUST NOT contain addresses, phone numbers, device tokens or push subscriptions. Recipients are `contact://` URIs that the implementation resolves (§9.4).
 
 ## 5. Decision engine
 
@@ -259,6 +276,39 @@ A recommendation is advice about a condition: `content_type: "application/vnd.os
 - **Never run by itself.** A consumer MUST NOT execute an action or `command` without a person's confirmation for that action. A `command` is text to show and copy; publishers MUST NOT put credentials or secrets in it.
 - **Sensitivity.** A recommendation whose `why`, actions or commands quote content (prompts, documents, tool arguments or output) MUST carry `labels.sensitivity: "content"` (§3).
 
+### 6.12 Notification records (OPTIONAL, 0.5)
+
+A notification record says what happened when the bus tried to tell a person about an envelope: `content_type: "application/vnd.osa.notification+json"`, with `data` shaped as `schemas/notification.schema.json`. It names the envelope it is about in `correlation.parent`.
+
+```json
+{
+  "spec": "osa/0.5",
+  "id": "ntf-1",
+  "topic": "notification.webpush",
+  "source": "svc://notifier",
+  "time": "2026-11-23T09:41:03Z",
+  "content_type": "application/vnd.osa.notification+json",
+  "correlation": { "parent": "alert-7f2a" },
+  "labels": { "sensitivity": "metadata" },
+  "data": {
+    "notification": "disk.falling",
+    "state": "sent",
+    "channel": "webpush",
+    "recipient": "contact://oncall/alice",
+    "for": "host-9/disk-fall",
+    "collapse_key": "k3f9a1",
+    "attempt": 1,
+    "escalation": 0
+  }
+}
+```
+
+- **Fields.** `notification` (normally the alert kind), `state`, `channel` and `recipient` are REQUIRED. `state` is `sent` (handed to the channel), `failed` (the channel refused it; `error` REQUIRED), `acknowledged` (the person opened or answered it) or `expired` (no acknowledgement before the escalation time).
+- **Answers.** An `acknowledged` record MAY carry `answer`: `open`, `done` or `dismissed`. `done` MAY carry `taken`, the index of the recommended action. `answer` and `taken` MUST NOT appear in any other state.
+- **Topics.** Records SHOULD use topics `notification.<channel>`, so subscriptions can take them at Tier 0.
+- **Never personal data.** `recipient` is a `contact://` URI. Records MUST NOT contain addresses, phone numbers, device tokens, push subscription endpoints or the notification text. `error` MUST NOT repeat any of them.
+- **Advice outcomes.** When a person answers `done` or `dismissed` from a notification that carried advice, the implementation SHOULD also publish the matching recommendation state (§6.11, Lifecycle), with `taken` for `done`.
+
 ## 7. Adapter interfaces
 
 Language-neutral pseudo-signatures:
@@ -382,6 +432,63 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 - An id that has left the window, or was never delivered, MUST get an `error` (WebSocket) or a `410` (SSE), and the consumer starts from the live stream.
 - With resume, a stream delivers at least once. Consumers MUST deduplicate by envelope `id`.
 
+### 9.4 Notification delivery (OPTIONAL, 0.5)
+
+The bus MAY deliver a subscription's items to people through `delivery.notify`. Notification is a delivery stage like a stream (§9.3): it receives exactly what the subscription would receive, after routing, mediation and redaction (§6.2, §6.8), and MUST NOT bypass any of them.
+
+**When to notify**
+- **Once per condition change.** For alerts (§6.10), the bus MUST notify at most once per `dedupe_key` per state, and MUST NOT notify again for repeated `firing` envelopes of an open condition unless its severity rises. A new notification for the same condition SHOULD reuse the same collapse key, so the device replaces it instead of adding another. For other envelopes, the condition is the envelope `id`.
+- **Filters.** Items below `when.min_severity`, or in a state not listed in `when.states`, MUST NOT be notified. Envelopes that are not alerts or recommendations have no severity and pass the severity filter.
+- **Cooldown and cap.** After notifying about a condition, the bus MUST NOT notify about it again within `when.cooldown`, except for a severity rise. Beyond `when.max_per_hour` for a subscription, the bus MUST send one summary notification ("12 more alerts") at most once per hour instead of individual ones; `critical` items are never held by the cap.
+- **Quiet hours.** Within `when.quiet_hours`, the bus MUST hold notifications and send one summary when the quiet hours end. With `allow: critical` (the default), `critical` items are sent at once.
+- **Escalation.** With `escalate`, if no `acknowledged` record arrives within `escalate.after`, the bus MUST publish an `expired` record and notify `escalate.to` once, with `escalation: 1`. Escalation does not repeat beyond the configured target.
+- **Safety first.** Notification of a `critical` alert or of an envelope with `hints.strict: true` MUST NOT depend on a model or a budget: its text is built from the envelope's own fields (`summary`, `alert`, the top action), never generated or summarized by a model.
+
+**What may leave the system**
+
+A notification passes through a push service run by a third party, appears on a lock screen, and may be read by someone other than the recipient. So:
+- **Minimal payload.** The payload (`schemas/notification.schema.json`, `$defs.payload`) carries a title, a body, the envelope id and, optionally, the top action's text. With `detail: headline` (the default) the body is at most one line; with `summary` it may be the alert's `summary`. The app fetches anything else through `history` (§9.1) under its own clearance.
+- **Sensitivity.** Text from an envelope labelled `secret` MUST NOT appear in a notification; the bus sends a generic text ("New critical alert"). Text from an envelope labelled `content` MUST NOT appear either, unless `content.allow_content` is true and the channel is end-to-end encrypted to the device (Web Push qualifies; APNs, FCM and email do not).
+- **Never a command.** A notification MUST NOT carry a recommendation's `command`, and a device MUST NOT run anything from a notification. Answer buttons only report `done` or `dismissed`.
+- **Clearance.** The bus MUST apply the subscription's `clearance` (§6.8) to every field it copies into a notification.
+
+**Recipients, devices and failures**
+- **Contacts.** The implementation resolves `contact://` URIs to channels and devices. Push subscriptions, device tokens and addresses are secrets: they MUST be stored like credentials, MUST NOT appear in envelopes, audit `reason` text (§8), digests, briefings or history, and MUST be removable by the person they belong to.
+- **Records.** For every attempt the bus SHOULD publish a notification record (§6.12). Dedupe, cooldown and escalation SHOULD be decided from those records, so they survive a restart.
+- **Failures.** A channel answer that means "gone" (Web Push `404` or `410`, APNs `410`, FCM `UNREGISTERED`) MUST remove that device. Other failures MAY be retried with exponential backoff, at most three times, each attempt recorded.
+- **Acknowledgement.** Opening a notification or tapping an answer SHOULD be reported back to the bus (for example through the app's own authenticated call), which publishes an `acknowledged` record.
+
+**Web Push binding**
+
+An implementation that offers `webpush` MUST follow this binding.
+- **Protocol.** RFC 8030 (Web Push), with the payload encrypted per RFC 8291 (`aes128gcm`) and the server identified per RFC 8292 (VAPID). The bus MUST send only to push service hosts it recognises, never to an arbitrary URL supplied in a subscription.
+- **Headers.** `TTL`: 3600 for `info` and `warning`, 86400 for `critical`. `Urgency` (RFC 8030 §5.3): `info` → `low`, `warning` → `normal`, `critical` → `high`. `Topic`: the collapse key, at most 32 characters from the URL-safe base64 alphabet, derived from the condition (for example a hash of the `dedupe_key`), never containing it in clear text.
+- **Payload.** One JSON object shaped as `$defs.payload`, at most 3000 bytes before encryption.
+
+```json
+{
+  "title": "Disk filling fast",
+  "body": "Free space fell 17 GB in 9 min on host-9",
+  "severity": "warning",
+  "state": "firing",
+  "envelope": "alert-7f2a",
+  "collapse_key": "k3f9a1",
+  "advice": { "recommendation": "rec-alert-7f2a", "action": "Clean the gradle cache", "taken": 0 },
+  "answers": ["done", "dismissed"],
+  "url": "https://ops.example.com/a/alert-7f2a"
+}
+```
+
+**Other channels (informative)**
+
+| | APNs | FCM | Email |
+|---|---|---|---|
+| Collapse key | `apns-collapse-id` | `collapse_key` / `tag` | `Message-ID` threading on the condition |
+| Urgency | `apns-priority` 5 or 10; `interruption-level` `time-sensitive` for critical | `priority` normal or high | none |
+| Expiry | `apns-expiration` | `ttl` | none |
+| End-to-end encrypted | no | no | no |
+| Answers | notification category actions | notification actions | links to the app, never a one-click action |
+
 ## 10. Conformance
 
 | Level | MUST implement |
@@ -390,7 +497,7 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 | **L1 Semantic** | L0 + Tier 1, §6.1, §6.3, §9.1 |
 | **L2 Agentic** | L1 + Tier 2, §6.2, §6.4–6.7 |
 
-Metrics (§6.9), alerts (§6.10), recommendations (§6.11), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.
+Metrics (§6.9), alerts (§6.10), recommendations (§6.11), notification records and delivery (§6.12, §9.4), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.
 
 The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; `IMPLEMENTATIONS.md` lists them.
 
@@ -401,11 +508,18 @@ The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, mani
 - **Cost abuse:** budgets are enforced per subscriber and per publisher.
 - **Repairs** are proposals until they are validated. Only one automatic retry is allowed (§6.5).
 - **Sensitive payloads:** publishers SHOULD mark prompts, documents and tool input and output as `content`, and credentials as `secret` (§3), so they stay out of model paths and summaries by default.
+- **Notifications:** notifications leave the system through third-party push services and appear on lock screens. They carry the least text possible, never secrets or commands, and never content unless end-to-end encrypted and allowed by the subscriber (§9.4). Device tokens and push subscriptions are credentials.
 - **Advice:** recommendations (§6.11) are proposals. Consumers never run an action or command without a person's confirmation, and agents that read recommendations treat them as data, not instructions.
 
 ## 12. Versioning
 
 `spec` in the envelope follows `osa/<major>.<minor>`. A minor version only adds features. A major version may break compatibility and requires a migration note.
+
+### Changes in 0.5
+All additive. Implementations MUST accept `osa/0.1` to `osa/0.5` envelopes.
+- §4: `delivery.notify` (channels, rules, content, escalation).
+- §6.12: notification records (`schemas/notification.schema.json`).
+- §9.4: notification delivery, with a Web Push binding and an informative mapping for APNs, FCM and email.
 
 ### Changes in 0.4
 All additive. Implementations MUST accept `osa/0.1` to `osa/0.4` envelopes.

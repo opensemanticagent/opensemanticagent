@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- **Spec 0.5 draft** (additive): notifications. `delivery.notify` in the subscription manifest (§4): channels (Web Push, APNs, FCM, email) to `contact://` recipients, rules (minimum severity, states, cooldown, hourly cap, quiet hours with a critical override), content limits and escalation. Notification records (§6.12, `application/vnd.osa.notification+json`): sent, failed, acknowledged or expired, with the person's answer. Notification delivery (§9.4): once per condition change, minimal payloads, no secrets, no content except over end-to-end encrypted channels when allowed, never a command, critical and strict alerts never wait on a model or budget, and an exact Web Push binding (RFC 8030, 8291, 8292). New schema `notification`, `subscription` and `envelope` updated, new fixture `envelopes_v0_5`. Proposal: issue #15.
+
 ## 0.4.0 (package), 2026-11-23
 The package serves spec 0.4 (draft), which includes everything from 0.3. Package 0.3.0 was never released.
 - Governance: before 1.0 and while no outside implementation is listed, additive normative changes may merge without the 14-day comment window; breaking changes always keep it.
