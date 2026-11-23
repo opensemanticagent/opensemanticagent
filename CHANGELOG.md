@@ -1,6 +1,7 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (package), 2026-11-23
+The package serves spec 0.4 (draft), which includes everything from 0.3. Package 0.3.0 was never released.
 - Governance: before 1.0 and while no outside implementation is listed, additive normative changes may merge without the 14-day comment window; breaking changes always keep it.
 - **Spec 0.4 draft** (additive): recommendations (§6.11) with `content_type: application/vnd.osa.recommendation+json`, topic `recommendation.<kind>`, `correlation.parent` = the envelope answered; ranked actions with expected effect, effort, reversibility and an optional command that consumers never run without confirmation; evidence, provenance and a lifecycle (open, done, dismissed, expired). New schema `recommendation`, envelope schema checks recommendation data, new fixture `envelopes_v0_4`. Package 0.4.0.
 - **Spec 0.3 draft** (all additive): `subject`, `correlation` and `labels.sensitivity` on the envelope (§3); metrics envelopes with batched samples, UCUM units, gauge, counter and delta kinds, and rollups (§6.9); alerts with severity, state and dedupe key (§6.10); stream resume with `delivery.replay_window` (§9.3); read-only `history` and `metrics_query` MCP tools and required tool annotations (§9.1); OpenTelemetry mapping (Appendix B).
