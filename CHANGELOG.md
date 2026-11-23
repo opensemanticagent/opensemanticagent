@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- **Spec 0.3 draft** (all additive): `subject`, `correlation` and `labels.sensitivity` on the envelope (§3); metrics envelopes with batched samples, UCUM units, gauge, counter and delta kinds, and rollups (§6.9); alerts with severity, state and dedupe key (§6.10); stream resume with `delivery.replay_window` (§9.3); read-only `history` and `metrics_query` MCP tools and required tool annotations (§9.1); OpenTelemetry mapping (Appendix B).
+- New schemas `metrics` and `alert`; `envelope`, `subscription` and `stream` updated. New fixture `envelopes_v0_3` with schema and handling cases.
+- MCP server: `osa_get_schema` and `osa_validate` cover metrics and alerts; envelope validation checks metrics and alert data; cross-schema references resolve locally.
 - MCP tool annotations are written out on each tool, so static scanners (M8ven) can read them. Same values, same behavior.
 
 ## 0.2.3 (package), 2026-11-21

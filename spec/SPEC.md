@@ -1,6 +1,6 @@
 # Open Semantic Agent (OSA) Specification
 
-**Version:** 0.2 (draft) · **Status:** RFC · **License:** Apache-2.0 · **Website:** https://opensemanticagent.org
+**Version:** 0.3 (draft) · **Status:** RFC · **License:** Apache-2.0 · **Website:** https://opensemanticagent.org
 
 The key words MUST, SHOULD and MAY are used as in RFC 2119.
 
@@ -28,6 +28,9 @@ An OSA bus does not replace durable storage or ordering. Those stay the transpor
 | **Capability** | An agentic behavior of the bus (§6) |
 | **Decision** | Any choice the bus makes about a message: route, transform, drop, merge, retry |
 | **Audit record** | The immutable log entry for a decision (§8) |
+| **Subject** | What an envelope is about, when that differs from its producer (§3, 0.3) |
+| **Sample** | One numeric measurement inside a metrics envelope (§6.9, 0.3) |
+| **Alert** | An envelope that opens or closes a condition someone should act on (§6.10, 0.3) |
 
 ## 3. Envelope
 
@@ -40,12 +43,14 @@ Every message MUST be wrapped in an envelope. Schema: `schemas/envelope.schema.j
   "trace_id": "tr-7f2a",
   "topic": "payments.events",
   "source": "svc://checkout",
+  "subject": "svc://checkout/order/ord-5521",
   "time": "2026-11-18T10:42:00Z",
   "content_type": "application/json",
   "schema_ref": "schemas://payment_event/v3",
   "data": { "...": "..." },
   "hints": { "urgency": "auto", "strict": false },
-  "labels": { "pii": ["card_last4", "email"] }
+  "labels": { "pii": ["card_last4", "email"], "sensitivity": "metadata" },
+  "correlation": { "session": "sess-81", "parent": "01JD3Z8K6Q9W1A" }
 }
 ```
 
@@ -54,6 +59,9 @@ Every message MUST be wrapped in an envelope. Schema: `schemas/envelope.schema.j
 - `labels.pii` lists fields that the redaction stage (§6.8) MUST handle before any model call.
 - The bus MAY add the derived fields `osa.intent`, `osa.urgency` and `osa.summary`. They MUST be written under the reserved `osa` key and never overwrite `data`.
 - **Idempotent publish (0.2).** `id` MUST be unique per publisher. Transports such as Kafka deliver at least once, and they redeliver after a crash. So when an envelope arrives whose `id` the bus has already routed (within its message-history retention), the bus MUST NOT route or deliver it again. It SHOULD return the original decisions and MUST write one audit record with `action: "duplicate"`, noting whether the payload differs from the original. A repeated failure for the same consumer is detected through DLQ retries (§6.5), not through republishing.
+- **Subject (0.3).** `source` names the producer of an envelope. When the envelope is about something else (a session, a process, a device that does not publish for itself), `subject` MAY name it. Both are URIs. Implementations SHOULD use these forms where they fit: `device://<device-id>`, `svc://<service>`, `agent://<app>`, `agent://<app>/session/<session-id>` and `process://<device-id>/<pid>@<start-time>` (the start time keeps a reused process id from merging two processes). A subscription MAY match on `subject` at Tier 0 with the same glob rules as `topic`.
+- **Correlation (0.3).** `correlation` MAY link an envelope to related work: `session` (a session or run identifier), `parent` (the `id` of the envelope that caused this one) and `traceparent` (a W3C Trace Context `traceparent` value). When `traceparent` is present, `trace_id` SHOULD carry its trace id, so 0.2 consumers keep working. A bus MUST NOT dedupe (§6.3) across different `correlation.session` values unless the subscription enables `dedupe.cross_trace`.
+- **Sensitivity (0.3).** `labels.sensitivity` MAY classify the payload as a whole: `metadata` (names, sizes, timings, counts), `content` (text a person or agent wrote, such as prompts, documents, tool arguments and outputs) or `secret` (credentials and keys). An envelope marked `content` that has no `hints.strict` field MUST be handled as `strict`; a publisher that wants content routed by meaning sets `hints.strict: false` explicitly. An envelope marked `secret` MUST be handled as `strict` whatever `hints.strict` says, and MUST NOT appear in digests (§6.4), briefings (§6.6), audit `reason` text (§8) or repairs (§6.5). An envelope without `labels.sensitivity` behaves as in 0.2.
 
 ## 4. Subscription manifest
 
@@ -76,6 +84,7 @@ delivery:
   mode: realtime                              # realtime | digest
   digest_window: 5m
   overflow: summarize                         # summarize | drop_oldest | block
+  replay_window: 10m                          # optional (0.3): streams may resume within this window (§9.3)
 model_policy:
   tier: auto                                  # auto | max_tier_1 | strict
   budget_tokens_per_hour: 200000
@@ -163,6 +172,50 @@ Before any model call or delivery, fields listed in `labels.pii` MUST be:
 
 A model adapter MUST receive the most restrictive view that any downstream use requires.
 
+### 6.9 Metrics (OPTIONAL, 0.3)
+Numeric measurements travel in metrics envelopes: `content_type: "application/vnd.osa.metrics+json"`, with `data` shaped as `schemas/metrics.schema.json`. One envelope carries a batch of samples, so a publisher that measures many things every second sends one envelope, not one per number.
+
+```json
+{
+  "spec": "osa/0.3",
+  "id": "sensor-7-1764150243",
+  "topic": "device.sensor-7.metrics",
+  "source": "device://sensor-7",
+  "time": "2026-11-22T09:24:03Z",
+  "content_type": "application/vnd.osa.metrics+json",
+  "data": {
+    "start": "2026-11-22T09:24:02Z",
+    "interval_s": 1,
+    "samples": [
+      { "metric": "cpu.utilization", "value": 0.42, "unit": "1", "kind": "gauge" },
+      { "metric": "power.draw", "value": 10.8, "unit": "W", "kind": "gauge" },
+      { "metric": "net.bytes_in", "value": 182000, "unit": "By", "kind": "counter",
+        "reset_time": "2026-11-22T00:00:00Z", "subject": "process://sensor-7/4410@1764140000" }
+    ]
+  },
+  "labels": { "sensitivity": "metadata" }
+}
+```
+
+- **Samples.** Each sample MUST have `metric` (lower-case, dot-separated), a numeric `value` and a `unit`. It MAY have `kind`, `subject` (overrides the envelope's subject for this sample), `time` (overrides `start`) and `attributes` (string values only).
+- **Units.** `unit` MUST be a case-sensitive UCUM code, as OpenTelemetry uses: `1` for ratios, `%` for percent, `By` for bytes, `By/s`, `s`, `ms`, `W`, `J`, `Cel`, `Hz`. Consumers MUST NOT guess units from metric names.
+- **Kinds.** `gauge` (a value at a point in time, the default), `counter` (a running total that only grows from `reset_time`) and `delta` (the change during `interval_s`). A counter that starts again from zero MUST carry a new `reset_time`.
+- **Rollups.** A publisher or the bus MAY summarise samples over a window. A rollup is a metrics envelope whose `data.window` names the window (for example `1m`) and whose samples carry `aggregation`: `avg`, `min`, `max`, `sum`, `count` or `last`. A rollup made by the bus carries `osa.kind: "rollup"` and MAY list `osa.covers`. Unlike a digest (§6.4), a rollup MAY outlive its source samples when the store's retention removes them.
+- **Routing.** Metrics envelopes SHOULD be routed at Tier 0 by topic and subject. A bus MUST NOT embed or judge metrics envelopes sample by sample; to act on what numbers mean, publish an alert (§6.10) or a rollup and route that.
+
+### 6.10 Alerts (OPTIONAL, 0.3)
+An alert opens or closes a condition someone should act on: `content_type: "application/vnd.osa.alert+json"`, with `data` shaped as `schemas/alert.schema.json`.
+
+```json
+{ "alert": "thermal.throttling", "severity": "warning", "state": "firing",
+  "dedupe_key": "sensor-7/thermal", "summary": "Throttling for 3 minutes",
+  "value": 0.82, "unit": "1", "threshold": 0.8, "started": "2026-11-22T09:21:00Z" }
+```
+
+- `alert`, `severity` (`info`, `warning`, `critical`), `state` (`firing`, `resolved`) and `dedupe_key` are REQUIRED.
+- At most one condition is open per `dedupe_key`. A repeated `firing` envelope for an open key updates it; consumers SHOULD show it once. A `resolved` envelope MUST carry the same `dedupe_key`.
+- Alerts SHOULD use topics `alert.<kind>`, so subscriptions can take them at Tier 0. An alert about a safety limit SHOULD carry `hints.strict: true` (Appendix A.2), so its delivery never depends on a model or a budget.
+
 ## 7. Adapter interfaces
 
 Language-neutral pseudo-signatures:
@@ -184,6 +237,7 @@ ModelAdapter
 StoreAdapter                                     # audit + history
   append(audit_record)
   query(filter, since) -> records
+  metrics(metric, subject, since, until, step) -> rollups   # OPTIONAL, 0.3 (§9.1 metrics_query)
 ```
 
 The bus MUST select models through a **model policy** (by cost, latency or capability), never by hard-coding them.
@@ -218,6 +272,28 @@ Tools: `publish`, `subscribe`, `unsubscribe`, `brief`, `ask`, `explain(decision_
 
 Implementations SHOULD also expose `consume(subscriber, n)` for pull delivery (0.2).
 
+**Read-only query tools (OPTIONAL, 0.3)**
+Agents often need to look back, not only subscribe forward: what happened in the last hour, how a number moved. An implementation MAY offer:
+- `history(topics, since, until, limit, subject)` returns stored envelopes whose topic matches any of the Tier 0 `topics` patterns (§5), newest first. `subject`, when given, matches the envelope's `subject` or a URI under it. Results MUST get the same clearance and redaction (§6.8) a delivery to the caller would get. Envelopes marked `secret` (§3) MUST NOT be returned. Alerts (§6.10) are read as `history(["alert.*"], ...)`.
+- `metrics_query(metric, subject, since, until, step, aggregation)` returns metrics over time as rollup envelopes (§6.9): `data.window` is `step`, and each sample carries `aggregation` (default `avg`). An implementation MAY answer from stored rollups after retention has removed the raw samples, and MUST then report the coarser `window` it actually used.
+
+Both tools only read. Any conformance level, including L0, MAY offer them. An L0 implementation that exposes MCP MAY offer only these two tools.
+
+**Tool annotations (0.3)**
+MCP clients use tool annotations to decide what an agent may call without asking a person. Every §9.1 tool an implementation exposes MUST carry these `readOnlyHint` and `destructiveHint` values, and SHOULD carry the `idempotentHint` values:
+
+| Tools | `readOnlyHint` | `destructiveHint` | `idempotentHint` |
+|---|---|---|---|
+| `history`, `metrics_query`, `explain`, `dlq_list` | true | false | true |
+| `brief`, `ask` | true | false | false (model output can vary) |
+| `consume` | false | false | false (it removes items from the queue) |
+| `publish` | false | false | true (idempotent by envelope `id`, §3) |
+| `subscribe` | false | true (replaces a manifest with the same name) | true |
+| `unsubscribe` | false | true | true |
+| `dlq_resolve` | false | true | false |
+
+`openWorldHint` SHOULD be `true` for tools that can call a model outside the machine (`brief`, `ask`, and any tool when the model policy may pick a remote provider) and `false` otherwise.
+
 ### 9.2 A2A (OPTIONAL)
 The bus MAY register as an A2A agent whose skills mirror the MCP tools, so other agents can delegate to it directly.
 
@@ -237,11 +313,11 @@ The bus MAY push a subscriber's deliveries over a live connection instead of mak
 - `GET <base>/stream/<subscriber>` with `Accept: text/event-stream`. The response is `200`, `Content-Type: text/event-stream`. `404` means the subscription doesn't exist, `409` means it already has a live stream, `401`/`403` mean authentication failed or the origin was refused.
 - Each delivery is one event: `id:` is the envelope `id`, `event:` is `message` or `digest` (a digest is an envelope with `osa.kind: "digest"`), and `data:` is the envelope as a single line of JSON. JSON escapes newlines, so one event never spans more than one `data:` line.
 - Heartbeats are comment lines (`: ping`). The first bytes of a stream SHOULD include a `retry:` field.
-- `Last-Event-ID` on reconnect is informational: items sent before a disconnect were consumed and are not re-sent. Unsent items were requeued under the at-most-once rule.
+- `Last-Event-ID` on reconnect is informational: items sent before a disconnect were consumed and are not re-sent. Unsent items were requeued under the at-most-once rule. With a replay window (below), it resumes the stream instead.
 
 **WebSocket binding**
-- `GET <base>/ws` with a standard upgrade (RFC 6455, version 13). Every frame is a text frame holding one JSON object. The server SHOULD accept the subprotocol `osa.v0.2` when the client offers it.
-- On connect the server sends `{"type": "hello", "spec": "osa/0.2", "ops": [...]}`.
+- `GET <base>/ws` with a standard upgrade (RFC 6455, version 13). Every frame is a text frame holding one JSON object. The server SHOULD accept the subprotocols `osa.v0.2` and `osa.v0.3` when the client offers them.
+- On connect the server sends `{"type": "hello", "spec": "osa/0.3", "ops": [...]}`.
 - Client ops. Each MAY carry a `ref`, which the reply echoes:
   - `{"op": "subscribe", "subscriber": "<name>"}` attaches to an existing subscription.
   - `{"op": "subscribe", "manifest": {...}}` or `{"op": "subscribe", "manifest_yaml": "..."}` creates or replaces a subscription (§4) and attaches it. With `"ephemeral": true` the subscription is removed when the socket closes.
@@ -256,6 +332,13 @@ The bus MAY push a subscriber's deliveries over a live connection instead of mak
 - Ping and close frames follow RFC 6455. The server SHOULD send a ping as its heartbeat.
 - Message shapes: `schemas/stream.schema.json`.
 
+**Resume (OPTIONAL, 0.3)**
+Phones sleep and change networks, so at-most-once streams lose items that were handed to a connection that then dropped. A subscription MAY set `delivery.replay_window` (§4). Within that window the bus keeps the items it delivered, in order, and a reconnecting consumer can ask for everything after the last item it processed:
+- SSE: a reconnect whose `Last-Event-ID` names an item still in the window MUST receive every later item first, then the live stream.
+- WebSocket: the `subscribe` op MAY carry `"resume_after": "<envelope id>"`, with the same effect. The `hello` message SHOULD list `"replay_window"` for each attached subscription.
+- An id that has left the window, or was never delivered, MUST get an `error` (WebSocket) or a `410` (SSE), and the consumer starts from the live stream.
+- With resume, a stream delivers at least once. Consumers MUST deduplicate by envelope `id`.
+
 ## 10. Conformance
 
 | Level | MUST implement |
@@ -263,6 +346,8 @@ The bus MAY push a subscriber's deliveries over a live connection instead of mak
 | **L0 Classic** | §3, Tier 0, §6.8, §8 |
 | **L1 Semantic** | L0 + Tier 1, §6.1, §6.3, §9.1 |
 | **L2 Agentic** | L1 + Tier 2, §6.2, §6.4–6.7 |
+
+Metrics (§6.9), alerts (§6.10), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.
 
 The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; `IMPLEMENTATIONS.md` lists them.
 
@@ -272,10 +357,20 @@ The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, mani
 - **Exfiltration:** model adapters run under the most restrictive clearance (§6.8).
 - **Cost abuse:** budgets are enforced per subscriber and per publisher.
 - **Repairs** are proposals until they are validated. Only one automatic retry is allowed (§6.5).
+- **Sensitive payloads:** publishers SHOULD mark prompts, documents and tool input and output as `content`, and credentials as `secret` (§3), so they stay out of model paths and summaries by default.
 
 ## 12. Versioning
 
 `spec` in the envelope follows `osa/<major>.<minor>`. A minor version only adds features. A major version may break compatibility and requires a migration note.
+
+### Changes in 0.3
+All additive. Implementations MUST accept `osa/0.1`, `osa/0.2` and `osa/0.3` envelopes.
+- §3: `subject` and URI forms for devices, services, agents, sessions and processes; `correlation` (session, parent, W3C `traceparent`); `labels.sensitivity` (`metadata`, `content`, `secret`), with content strict by default.
+- §6.9: metrics envelopes with batched samples, UCUM units, gauge, counter and delta kinds, and rollups (`schemas/metrics.schema.json`).
+- §6.10: alerts with severity, state and a dedupe key (`schemas/alert.schema.json`).
+- §9.3: stream resume with `delivery.replay_window`, `Last-Event-ID` and `resume_after`.
+- §9.1: read-only `history` and `metrics_query` tools, open to any level including L0; required MCP tool annotations (`readOnlyHint`, `destructiveHint`) for every §9.1 tool.
+- Appendix B (informative): mapping OpenTelemetry logs, metrics and spans to envelopes.
 
 ### Changes in 0.2
 All additive. The envelope format is unchanged, so implementations MUST accept both `osa/0.1` and `osa/0.2` envelopes.
@@ -332,3 +427,25 @@ device ──cable──▶ phone app ──network──▶ backend ──▶ O
 - **Device text is where models help.** Error descriptions, technician notes and user comments are routed by meaning (§6.1), within budget (§5). With `on_budget_exhausted: skip`, the bill cannot grow past the budget.
 - **Every decision is recorded** (§8). For medical, vehicle and payment devices, being able to show who was alerted, when and why can matter for compliance.
 - **Results go back to the phone.** The app can hold a stream (§9.3) on a subscription for its own device, for example an ephemeral WebSocket subscription that ends when the app closes. A "please recheck" or "firmware update available" message then reaches the user without polling. Streams deliver at most once, so the app should deduplicate by envelope `id`.
+
+## Appendix B. OpenTelemetry mapping (informative)
+
+Many agents and services already export OpenTelemetry. This appendix shows one mapping, so that every implementation turns the same OpenTelemetry data into the same envelopes. It adds no requirements.
+
+| OpenTelemetry | Envelope |
+|---|---|
+| Resource `service.name` (and `host.name`) | `source`, for example `svc://checkout` or `device://<host.name>` |
+| Log record or span event name | `topic`, dots kept, for example `tool.call` under the service's prefix |
+| Log record timestamp, or span end time | `time` |
+| Log record attributes and body | `data`; prompt or tool text marked `labels.sensitivity: content` |
+| Trace id and span id | `correlation.traceparent`, and `trace_id` for 0.2 consumers |
+| Session attribute (for example `session.id`) | `correlation.session` |
+| Gauge data point | metrics sample, `kind: gauge` |
+| Sum data point, cumulative | metrics sample, `kind: counter`, `reset_time` = the point's start time |
+| Sum data point, delta | metrics sample, `kind: delta` |
+| Histogram data point | rollup samples with `aggregation` `count`, `sum`, `min` and `max` |
+| Instrument unit | `unit` (OpenTelemetry units are already UCUM) |
+
+- **Ids.** Build `id` from stable inputs (trace id, span id and event index, or a hash of the record), so a re-export publishes the same id and idempotent publish (§3) drops the repeat.
+- **Batching.** Put the data points of one export into one metrics envelope per resource, not one envelope per point.
+

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensemanticagent.org/schemas/alert.schema.json",
+  "title": "Open Semantic Agent Alert Data (SPEC 0.3 §6.10)",
+  "description": "The data of an envelope whose content_type is application/vnd.osa.alert+json",
+  "type": "object",
+  "required": [
+    "alert",
+    "severity",
+    "state",
+    "dedupe_key"
+  ],
+  "properties": {
+    "alert": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$"
+    },
+    "severity": {
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ]
+    },
+    "state": {
+      "enum": [
+        "firing",
+        "resolved"
+      ]
+    },
+    "dedupe_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string"
+    },
+    "value": {
+      "type": "number"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "threshold": {
+      "type": "number"
+    },
+    "started": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

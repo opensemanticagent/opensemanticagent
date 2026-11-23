@@ -26,7 +26,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 REPO = "https://github.com/opensemanticagent/opensemanticagent"
 DOMAIN = "opensemanticagent.org"
-SPEC_VERSION = "0.2"
+SPEC_VERSION = "0.3"
 GENERATED = ["index.html", "spec", "schemas", "privacy", "favicon.svg", ".nojekyll", "CNAME"]
 
 LOGO = """<svg viewBox="0 0 56 56" width="{s}" height="{s}" role="img" aria-label="Open Semantic Agent logo">
@@ -124,7 +124,8 @@ vectors let you check an implementation against it.</p>
 <ul>
 <li><a href="spec/">Specification {spec}</a> (draft)</li>
 <li>JSON Schemas: <a href="schemas/envelope.schema.json">envelope</a>, <a href="schemas/subscription.schema.json">subscription</a>,
-<a href="schemas/audit.schema.json">audit</a>, <a href="schemas/stream.schema.json">stream</a></li>
+<a href="schemas/audit.schema.json">audit</a>, <a href="schemas/stream.schema.json">stream</a>,
+<a href="schemas/metrics.schema.json">metrics</a>, <a href="schemas/alert.schema.json">alert</a></li>
 <li><a href="{repo}/tree/main/conformance/fixtures">Conformance test vectors</a></li>
 </ul>
 
