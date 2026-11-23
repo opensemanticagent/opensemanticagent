@@ -134,6 +134,150 @@
         "replay_window": {
           "type": "string",
           "description": "Streams may resume within this window (0.3, §9.3), for example 10m"
+        },
+        "notify": {
+          "type": "object",
+          "required": [
+            "channels"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "channels": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "recipient"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "webpush",
+                      "apns",
+                      "fcm",
+                      "email"
+                    ]
+                  },
+                  "recipient": {
+                    "type": "string",
+                    "pattern": "^contact://"
+                  }
+                }
+              }
+            },
+            "when": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "min_severity": {
+                  "enum": [
+                    "info",
+                    "warning",
+                    "critical"
+                  ],
+                  "default": "warning"
+                },
+                "states": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "enum": [
+                      "firing",
+                      "resolved"
+                    ]
+                  },
+                  "default": [
+                    "firing"
+                  ]
+                },
+                "cooldown": {
+                  "type": "string",
+                  "pattern": "^[0-9]+[smh]$",
+                  "default": "15m"
+                },
+                "max_per_hour": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 20
+                },
+                "quiet_hours": {
+                  "type": "object",
+                  "required": [
+                    "start",
+                    "end",
+                    "tz"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    },
+                    "end": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    },
+                    "tz": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "An IANA time zone, for example Asia/Dubai"
+                    },
+                    "allow": {
+                      "enum": [
+                        "none",
+                        "critical"
+                      ],
+                      "default": "critical"
+                    }
+                  }
+                }
+              }
+            },
+            "content": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "detail": {
+                  "enum": [
+                    "headline",
+                    "summary"
+                  ],
+                  "default": "headline"
+                },
+                "with_advice": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "allow_content": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Let text from envelopes marked content into notifications, on end-to-end encrypted channels only"
+                }
+              }
+            },
+            "escalate": {
+              "type": "object",
+              "required": [
+                "after",
+                "to"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "after": {
+                  "type": "string",
+                  "pattern": "^[0-9]+[smh]$"
+                },
+                "to": {
+                  "type": "string",
+                  "pattern": "^contact://"
+                }
+              }
+            }
+          },
+          "description": "Tell people about matched items (0.5, §9.4)"
         }
       }
     },

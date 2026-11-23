@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensemanticagent.org/schemas/notification.schema.json",
+  "title": "Open Semantic Agent Notification Data (SPEC 0.5 §6.12)",
+  "description": "The data of an envelope whose content_type is application/vnd.osa.notification+json: a record of one attempt to tell a person about an envelope. $defs.payload is the message a push service carries to the device (§9.4).",
+  "type": "object",
+  "required": [
+    "notification",
+    "state",
+    "channel",
+    "recipient"
+  ],
+  "properties": {
+    "notification": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$",
+      "description": "The kind of thing notified, normally the alert or recommendation kind, for example disk.falling"
+    },
+    "state": {
+      "enum": [
+        "sent",
+        "failed",
+        "acknowledged",
+        "expired"
+      ],
+      "description": "sent: handed to the channel; failed: the channel refused it; acknowledged: the person opened it or answered it; expired: no answer before the escalation time"
+    },
+    "channel": {
+      "enum": [
+        "webpush",
+        "apns",
+        "fcm",
+        "email"
+      ]
+    },
+    "recipient": {
+      "type": "string",
+      "pattern": "^contact://",
+      "description": "A contact URI the implementation resolves. Never an address, a phone number, a device token or a push subscription."
+    },
+    "for": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The dedupe_key of the alert, or the id of the envelope, this notification is about"
+    },
+    "collapse_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "escalation": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "0 for the first recipient, 1 for the first escalation, and so on"
+    },
+    "answer": {
+      "enum": [
+        "open",
+        "done",
+        "dismissed"
+      ],
+      "description": "Only with state acknowledged: what the person did from the notification"
+    },
+    "taken": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Only with answer done: the index of the recommended action the person marked done"
+    },
+    "error": {
+      "type": "string",
+      "description": "Only with state failed: the channel's reason, without addresses or tokens"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "failed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "error"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "acknowledged"
+          }
+        }
+      },
+      "then": {},
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "answer"
+              ]
+            },
+            {
+              "required": [
+                "taken"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "taken"
+        ]
+      },
+      "then": {
+        "properties": {
+          "answer": {
+            "const": "done"
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "payload": {
+      "title": "Notification payload (§9.4)",
+      "description": "What the push service carries to the device. At most 3000 bytes as UTF-8 JSON, so it fits every channel after encryption.",
+      "type": "object",
+      "required": [
+        "title",
+        "body",
+        "envelope"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "critical"
+          ]
+        },
+        "state": {
+          "enum": [
+            "firing",
+            "resolved"
+          ]
+        },
+        "envelope": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the envelope notified; the app fetches the rest with history (§9.1) under its own clearance"
+        },
+        "collapse_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "advice": {
+          "type": "object",
+          "required": [
+            "recommendation",
+            "action"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "recommendation": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The id of the open recommendation (§6.11)"
+            },
+            "action": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "description": "The top action's text. Never its command."
+            },
+            "taken": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "answers": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "enum": [
+              "done",
+              "dismissed"
+            ]
+          },
+          "description": "Buttons the device may offer; each answer is reported back as an acknowledged notification and, for advice, a recommendation state change"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://",
+          "description": "Where a tap opens, on the implementation's own origin"
+        }
+      }
+    }
+  }
+}

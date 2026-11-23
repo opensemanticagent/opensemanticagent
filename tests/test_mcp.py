@@ -2,6 +2,8 @@ import io
 import json
 import unittest
 
+from jsonschema import Draft202012Validator
+
 from osa import mcp, spec
 
 
@@ -90,6 +92,23 @@ class McpTest(unittest.TestCase):
         self.assertIn("recommendation", tool("osa_get_schema", name="recommendation")["structuredContent"]["$id"])
         hits = tool("osa_search_spec", query="Never run by itself")["structuredContent"]
         self.assertTrue(hits)
+
+    def test_v0_5_notification_cases(self):
+        fx = tool("osa_get_fixture", name="envelopes_v0_5")["structuredContent"]
+        self.assertGreaterEqual(len(fx["cases"]), 11)
+        for c in fx["cases"]:
+            r = tool("osa_validate", kind=c["schema"], document=c["document"])["structuredContent"]
+            self.assertEqual(r["valid"], c["valid"], (c["name"], r["errors"]))
+        payload = {"$ref": spec.schema("notification")["$id"] + "#/$defs/payload"}
+        v = Draft202012Validator(payload, registry=spec._registry())
+        for c in fx["payload_cases"]:
+            self.assertEqual(v.is_valid(c["document"]), c["valid"], c["name"])
+
+    def test_v0_5_sections_and_schema(self):
+        self.assertIn("Notification records", tool("osa_get_section", section="6.12")["structuredContent"]["title"])
+        self.assertIn("Notification delivery", tool("osa_get_section", section="9.4")["structuredContent"]["title"])
+        self.assertIn("notification", tool("osa_get_schema", name="notification")["structuredContent"]["$id"])
+        self.assertTrue(tool("osa_search_spec", query="Never a command")["structuredContent"])
 
     def test_stdio(self):
         out = io.StringIO()

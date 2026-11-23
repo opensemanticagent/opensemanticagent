@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Specification 0.4 · Open Semantic Agent</title><meta name="description" content="The Open Semantic Agent (OSA) specification, version 0.4 (draft)."><link rel="icon" href="../favicon.svg" type="image/svg+xml"><style>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Specification 0.5 · Open Semantic Agent</title><meta name="description" content="The Open Semantic Agent (OSA) specification, version 0.5 (draft)."><link rel="icon" href="../favicon.svg" type="image/svg+xml"><style>
 :root{--fg:#15233B;--muted:#56637A;--accent:#0E7C72;--accent2:#B0570A;--bg:#fff;--soft:#F4F6F9;--code:#F1F4F8;--line:#DCE2EB}
 @media (prefers-color-scheme:dark){:root{--fg:#E7ECF4;--muted:#9AA8BE;--accent:#4FC7B9;--accent2:#F0A35A;--bg:#0F1724;--soft:#172235;--code:#1B2840;--line:#2A3850}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -28,7 +28,7 @@ footer{max-width:900px;margin:40px auto;padding:16px 20px;border-top:1px solid v
 <path d="M18 28c0-7 4-12 10-12M18 28c0 7 4 12 10 12" stroke="#2BB3A5" stroke-width="3" fill="none" stroke-linecap="round"/>
 <circle cx="28" cy="16" r="3.5" fill="#2BB3A5"/><circle cx="28" cy="40" r="3.5" fill="#2BB3A5"/>
 <circle cx="40" cy="28" r="4" fill="#E08A2E"/><circle cx="12" cy="28" r="3" fill="#F4F6F9"/></svg>Open Semantic Agent</a><nav><a href="../spec/">Spec</a><a href="../delivery/">Delivery map</a><a href="../schemas/envelope.schema.json">Schemas</a><a href="../privacy/">Privacy</a><a href="https://github.com/opensemanticagent/opensemanticagent">GitHub</a></nav></div></header><main><h1 id="open-semantic-agent-osa-specification">Open Semantic Agent (OSA) Specification</h1>
-<p><strong>Version:</strong> 0.4 (draft) · <strong>Status:</strong> RFC · <strong>License:</strong> Apache-2.0 · <strong>Website:</strong> https://opensemanticagent.org</p>
+<p><strong>Version:</strong> 0.5 (draft) · <strong>Status:</strong> RFC · <strong>License:</strong> Apache-2.0 · <strong>Website:</strong> https://opensemanticagent.org</p>
 <p>The key words MUST, SHOULD and MAY are used as in RFC 2119.</p>
 <hr />
 <h2 id="1-scope">1. Scope</h2>
@@ -142,6 +142,22 @@ delivery:
   digest_window: 5m
   overflow: summarize                         # summarize | drop_oldest | block
   replay_window: 10m                          # optional (0.3): streams may resume within this window (§9.3)
+  notify:                                     # optional (0.5): tell people about matched items (§9.4)
+    channels:
+      - type: webpush                         # webpush | apns | fcm | email
+        recipient: contact://oncall/alice     # resolved by the implementation; never an address or a token
+    when:
+      min_severity: warning                   # info | warning | critical
+      states: [firing]                        # firing | resolved
+      cooldown: 15m                           # per condition
+      max_per_hour: 20
+      quiet_hours: { start: &quot;22:00&quot;, end: &quot;07:00&quot;, tz: &quot;Asia/Dubai&quot;, allow: critical }
+    content:
+      detail: headline                        # headline | summary
+      with_advice: true                       # add the top recommended action (§6.11)
+    escalate:
+      after: 10m                              # if nobody acknowledges
+      to: contact://oncall/backup
 model_policy:
   tier: auto                                  # auto | max_tier_1 | strict
   budget_tokens_per_hour: 200000
@@ -150,7 +166,8 @@ model_policy:
 <p>Rules:
 - A manifest MUST declare at least one of <code>match.topics</code> or <code>match.intent</code>.
 - If both are declared, a message matches when it matches the topic <strong>and</strong> the intent, unless <code>match.mode: any</code> is set.
-- The bus MUST NOT deliver a payload that exceeds the subscriber's <code>clearance</code>.</p>
+- The bus MUST NOT deliver a payload that exceeds the subscriber's <code>clearance</code>.
+- <code>delivery.notify</code> (0.5) MUST NOT contain addresses, phone numbers, device tokens or push subscriptions. Recipients are <code>contact://</code> URIs that the implementation resolves (§9.4).</p>
 <h2 id="5-decision-engine">5. Decision engine</h2>
 <p>Three tiers are evaluated in order. A message moves to the next tier only when the current tier is <strong>unsure</strong>.</p>
 <table>
@@ -313,6 +330,36 @@ model_policy:
 <li><strong>Never run by itself.</strong> A consumer MUST NOT execute an action or <code>command</code> without a person's confirmation for that action. A <code>command</code> is text to show and copy; publishers MUST NOT put credentials or secrets in it.</li>
 <li><strong>Sensitivity.</strong> A recommendation whose <code>why</code>, actions or commands quote content (prompts, documents, tool arguments or output) MUST carry <code>labels.sensitivity: "content"</code> (§3).</li>
 </ul>
+<h3 id="612-notification-records-optional-05">6.12 Notification records (OPTIONAL, 0.5)</h3>
+<p>A notification record says what happened when the bus tried to tell a person about an envelope: <code>content_type: "application/vnd.osa.notification+json"</code>, with <code>data</code> shaped as <code>schemas/notification.schema.json</code>. It names the envelope it is about in <code>correlation.parent</code>.</p>
+<pre><code class="language-json">{
+  &quot;spec&quot;: &quot;osa/0.5&quot;,
+  &quot;id&quot;: &quot;ntf-1&quot;,
+  &quot;topic&quot;: &quot;notification.webpush&quot;,
+  &quot;source&quot;: &quot;svc://notifier&quot;,
+  &quot;time&quot;: &quot;2026-11-23T09:41:03Z&quot;,
+  &quot;content_type&quot;: &quot;application/vnd.osa.notification+json&quot;,
+  &quot;correlation&quot;: { &quot;parent&quot;: &quot;alert-7f2a&quot; },
+  &quot;labels&quot;: { &quot;sensitivity&quot;: &quot;metadata&quot; },
+  &quot;data&quot;: {
+    &quot;notification&quot;: &quot;disk.falling&quot;,
+    &quot;state&quot;: &quot;sent&quot;,
+    &quot;channel&quot;: &quot;webpush&quot;,
+    &quot;recipient&quot;: &quot;contact://oncall/alice&quot;,
+    &quot;for&quot;: &quot;host-9/disk-fall&quot;,
+    &quot;collapse_key&quot;: &quot;k3f9a1&quot;,
+    &quot;attempt&quot;: 1,
+    &quot;escalation&quot;: 0
+  }
+}
+</code></pre>
+<ul>
+<li><strong>Fields.</strong> <code>notification</code> (normally the alert kind), <code>state</code>, <code>channel</code> and <code>recipient</code> are REQUIRED. <code>state</code> is <code>sent</code> (handed to the channel), <code>failed</code> (the channel refused it; <code>error</code> REQUIRED), <code>acknowledged</code> (the person opened or answered it) or <code>expired</code> (no acknowledgement before the escalation time).</li>
+<li><strong>Answers.</strong> An <code>acknowledged</code> record MAY carry <code>answer</code>: <code>open</code>, <code>done</code> or <code>dismissed</code>. <code>done</code> MAY carry <code>taken</code>, the index of the recommended action. <code>answer</code> and <code>taken</code> MUST NOT appear in any other state.</li>
+<li><strong>Topics.</strong> Records SHOULD use topics <code>notification.&lt;channel&gt;</code>, so subscriptions can take them at Tier 0.</li>
+<li><strong>Never personal data.</strong> <code>recipient</code> is a <code>contact://</code> URI. Records MUST NOT contain addresses, phone numbers, device tokens, push subscription endpoints or the notification text. <code>error</code> MUST NOT repeat any of them.</li>
+<li><strong>Advice outcomes.</strong> When a person answers <code>done</code> or <code>dismissed</code> from a notification that carried advice, the implementation SHOULD also publish the matching recommendation state (§6.11, Lifecycle), with <code>taken</code> for <code>done</code>.</li>
+</ul>
 <h2 id="7-adapter-interfaces">7. Adapter interfaces</h2>
 <p>Language-neutral pseudo-signatures:</p>
 <pre><code>TransportAdapter
@@ -457,6 +504,86 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 - WebSocket: the <code>subscribe</code> op MAY carry <code>"resume_after": "&lt;envelope id&gt;"</code>, with the same effect. The <code>hello</code> message SHOULD list <code>"replay_window"</code> for each attached subscription.
 - An id that has left the window, or was never delivered, MUST get an <code>error</code> (WebSocket) or a <code>410</code> (SSE), and the consumer starts from the live stream.
 - With resume, a stream delivers at least once. Consumers MUST deduplicate by envelope <code>id</code>.</p>
+<h3 id="94-notification-delivery-optional-05">9.4 Notification delivery (OPTIONAL, 0.5)</h3>
+<p>The bus MAY deliver a subscription's items to people through <code>delivery.notify</code>. Notification is a delivery stage like a stream (§9.3): it receives exactly what the subscription would receive, after routing, mediation and redaction (§6.2, §6.8), and MUST NOT bypass any of them.</p>
+<p><strong>When to notify</strong>
+- <strong>Once per condition change.</strong> For alerts (§6.10), the bus MUST notify at most once per <code>dedupe_key</code> per state, and MUST NOT notify again for repeated <code>firing</code> envelopes of an open condition unless its severity rises. A new notification for the same condition SHOULD reuse the same collapse key, so the device replaces it instead of adding another. For other envelopes, the condition is the envelope <code>id</code>.
+- <strong>Filters.</strong> Items below <code>when.min_severity</code>, or in a state not listed in <code>when.states</code>, MUST NOT be notified. Envelopes that are not alerts or recommendations have no severity and pass the severity filter.
+- <strong>Cooldown and cap.</strong> After notifying about a condition, the bus MUST NOT notify about it again within <code>when.cooldown</code>, except for a severity rise. Beyond <code>when.max_per_hour</code> for a subscription, the bus MUST send one summary notification ("12 more alerts") at most once per hour instead of individual ones; <code>critical</code> items are never held by the cap.
+- <strong>Quiet hours.</strong> Within <code>when.quiet_hours</code>, the bus MUST hold notifications and send one summary when the quiet hours end. With <code>allow: critical</code> (the default), <code>critical</code> items are sent at once.
+- <strong>Escalation.</strong> With <code>escalate</code>, if no <code>acknowledged</code> record arrives within <code>escalate.after</code>, the bus MUST publish an <code>expired</code> record and notify <code>escalate.to</code> once, with <code>escalation: 1</code>. Escalation does not repeat beyond the configured target.
+- <strong>Safety first.</strong> Notification of a <code>critical</code> alert or of an envelope with <code>hints.strict: true</code> MUST NOT depend on a model or a budget: its text is built from the envelope's own fields (<code>summary</code>, <code>alert</code>, the top action), never generated or summarized by a model.</p>
+<p><strong>What may leave the system</strong></p>
+<p>A notification passes through a push service run by a third party, appears on a lock screen, and may be read by someone other than the recipient. So:
+- <strong>Minimal payload.</strong> The payload (<code>schemas/notification.schema.json</code>, <code>$defs.payload</code>) carries a title, a body, the envelope id and, optionally, the top action's text. With <code>detail: headline</code> (the default) the body is at most one line; with <code>summary</code> it may be the alert's <code>summary</code>. The app fetches anything else through <code>history</code> (§9.1) under its own clearance.
+- <strong>Sensitivity.</strong> Text from an envelope labelled <code>secret</code> MUST NOT appear in a notification; the bus sends a generic text ("New critical alert"). Text from an envelope labelled <code>content</code> MUST NOT appear either, unless <code>content.allow_content</code> is true and the channel is end-to-end encrypted to the device (Web Push qualifies; APNs, FCM and email do not).
+- <strong>Never a command.</strong> A notification MUST NOT carry a recommendation's <code>command</code>, and a device MUST NOT run anything from a notification. Answer buttons only report <code>done</code> or <code>dismissed</code>.
+- <strong>Clearance.</strong> The bus MUST apply the subscription's <code>clearance</code> (§6.8) to every field it copies into a notification.</p>
+<p><strong>Recipients, devices and failures</strong>
+- <strong>Contacts.</strong> The implementation resolves <code>contact://</code> URIs to channels and devices. Push subscriptions, device tokens and addresses are secrets: they MUST be stored like credentials, MUST NOT appear in envelopes, audit <code>reason</code> text (§8), digests, briefings or history, and MUST be removable by the person they belong to.
+- <strong>Records.</strong> For every attempt the bus SHOULD publish a notification record (§6.12). Dedupe, cooldown and escalation SHOULD be decided from those records, so they survive a restart.
+- <strong>Failures.</strong> A channel answer that means "gone" (Web Push <code>404</code> or <code>410</code>, APNs <code>410</code>, FCM <code>UNREGISTERED</code>) MUST remove that device. Other failures MAY be retried with exponential backoff, at most three times, each attempt recorded.
+- <strong>Acknowledgement.</strong> Opening a notification or tapping an answer SHOULD be reported back to the bus (for example through the app's own authenticated call), which publishes an <code>acknowledged</code> record.</p>
+<p><strong>Web Push binding</strong></p>
+<p>An implementation that offers <code>webpush</code> MUST follow this binding.
+- <strong>Protocol.</strong> RFC 8030 (Web Push), with the payload encrypted per RFC 8291 (<code>aes128gcm</code>) and the server identified per RFC 8292 (VAPID). The bus MUST send only to push service hosts it recognises, never to an arbitrary URL supplied in a subscription.
+- <strong>Headers.</strong> <code>TTL</code>: 3600 for <code>info</code> and <code>warning</code>, 86400 for <code>critical</code>. <code>Urgency</code> (RFC 8030 §5.3): <code>info</code> → <code>low</code>, <code>warning</code> → <code>normal</code>, <code>critical</code> → <code>high</code>. <code>Topic</code>: the collapse key, at most 32 characters from the URL-safe base64 alphabet, derived from the condition (for example a hash of the <code>dedupe_key</code>), never containing it in clear text.
+- <strong>Payload.</strong> One JSON object shaped as <code>$defs.payload</code>, at most 3000 bytes before encryption.</p>
+<pre><code class="language-json">{
+  &quot;title&quot;: &quot;Disk filling fast&quot;,
+  &quot;body&quot;: &quot;Free space fell 17 GB in 9 min on host-9&quot;,
+  &quot;severity&quot;: &quot;warning&quot;,
+  &quot;state&quot;: &quot;firing&quot;,
+  &quot;envelope&quot;: &quot;alert-7f2a&quot;,
+  &quot;collapse_key&quot;: &quot;k3f9a1&quot;,
+  &quot;advice&quot;: { &quot;recommendation&quot;: &quot;rec-alert-7f2a&quot;, &quot;action&quot;: &quot;Clean the gradle cache&quot;, &quot;taken&quot;: 0 },
+  &quot;answers&quot;: [&quot;done&quot;, &quot;dismissed&quot;],
+  &quot;url&quot;: &quot;https://ops.example.com/a/alert-7f2a&quot;
+}
+</code></pre>
+<p><strong>Other channels (informative)</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>APNs</th>
+<th>FCM</th>
+<th>Email</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Collapse key</td>
+<td><code>apns-collapse-id</code></td>
+<td><code>collapse_key</code> / <code>tag</code></td>
+<td><code>Message-ID</code> threading on the condition</td>
+</tr>
+<tr>
+<td>Urgency</td>
+<td><code>apns-priority</code> 5 or 10; <code>interruption-level</code> <code>time-sensitive</code> for critical</td>
+<td><code>priority</code> normal or high</td>
+<td>none</td>
+</tr>
+<tr>
+<td>Expiry</td>
+<td><code>apns-expiration</code></td>
+<td><code>ttl</code></td>
+<td>none</td>
+</tr>
+<tr>
+<td>End-to-end encrypted</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Answers</td>
+<td>notification category actions</td>
+<td>notification actions</td>
+<td>links to the app, never a one-click action</td>
+</tr>
+</tbody>
+</table>
 <h2 id="10-conformance">10. Conformance</h2>
 <table>
 <thead>
@@ -480,7 +607,7 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 </tr>
 </tbody>
 </table>
-<p>Metrics (§6.9), alerts (§6.10), recommendations (§6.11), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.</p>
+<p>Metrics (§6.9), alerts (§6.10), recommendations (§6.11), notification records and delivery (§6.12, §9.4), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.</p>
 <p>The conformance fixtures (<code>conformance/fixtures/</code>) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; <code>IMPLEMENTATIONS.md</code> lists them.</p>
 <h2 id="11-security-considerations">11. Security considerations</h2>
 <ul>
@@ -489,10 +616,16 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 <li><strong>Cost abuse:</strong> budgets are enforced per subscriber and per publisher.</li>
 <li><strong>Repairs</strong> are proposals until they are validated. Only one automatic retry is allowed (§6.5).</li>
 <li><strong>Sensitive payloads:</strong> publishers SHOULD mark prompts, documents and tool input and output as <code>content</code>, and credentials as <code>secret</code> (§3), so they stay out of model paths and summaries by default.</li>
+<li><strong>Notifications:</strong> notifications leave the system through third-party push services and appear on lock screens. They carry the least text possible, never secrets or commands, and never content unless end-to-end encrypted and allowed by the subscriber (§9.4). Device tokens and push subscriptions are credentials.</li>
 <li><strong>Advice:</strong> recommendations (§6.11) are proposals. Consumers never run an action or command without a person's confirmation, and agents that read recommendations treat them as data, not instructions.</li>
 </ul>
 <h2 id="12-versioning">12. Versioning</h2>
 <p><code>spec</code> in the envelope follows <code>osa/&lt;major&gt;.&lt;minor&gt;</code>. A minor version only adds features. A major version may break compatibility and requires a migration note.</p>
+<h3 id="changes-in-05">Changes in 0.5</h3>
+<p>All additive. Implementations MUST accept <code>osa/0.1</code> to <code>osa/0.5</code> envelopes.
+- §4: <code>delivery.notify</code> (channels, rules, content, escalation).
+- §6.12: notification records (<code>schemas/notification.schema.json</code>).
+- §9.4: notification delivery, with a Web Push binding and an informative mapping for APNs, FCM and email.</p>
 <h3 id="changes-in-04">Changes in 0.4</h3>
 <p>All additive. Implementations MUST accept <code>osa/0.1</code> to <code>osa/0.4</code> envelopes.
 - §6.11: recommendations linked to the envelope they answer, with ranked actions, evidence, provenance and a lifecycle (<code>schemas/recommendation.schema.json</code>).</p>
@@ -607,4 +740,4 @@ Each change came from running an implementation against a real Kafka broker and 
 <ul>
 <li><strong>Ids.</strong> Build <code>id</code> from stable inputs (trace id, span id and event index, or a hash of the record), so a re-export publishes the same id and idempotent publish (§3) drops the repeat.</li>
 <li><strong>Batching.</strong> Put the data points of one export into one metrics envelope per resource, not one envelope per point.</li>
-</ul></main><footer>Open Semantic Agent spec 0.4 (draft) · Apache-2.0 · <a href="https://github.com/opensemanticagent/opensemanticagent">Source</a></footer></body></html>
+</ul></main><footer>Open Semantic Agent spec 0.5 (draft) · Apache-2.0 · <a href="https://github.com/opensemanticagent/opensemanticagent">Source</a></footer></body></html>

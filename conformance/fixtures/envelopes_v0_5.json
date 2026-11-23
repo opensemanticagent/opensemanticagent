@@ -1,0 +1,354 @@
+{
+ "name": "envelopes_v0_5",
+ "spec": "osa/0.5",
+ "description": "OSA 0.5 draft: schema cases for notification records (§6.12), delivery.notify (§4) and the device payload (§9.4, notification.schema.json $defs.payload).",
+ "cases": [
+  {
+   "name": "sent record with for, collapse key, attempt and escalation",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-1",
+    "data": {
+     "notification": "disk.falling",
+     "state": "sent",
+     "channel": "webpush",
+     "recipient": "contact://oncall/alice",
+     "for": "host-9/disk-fall",
+     "collapse_key": "k3f9a1",
+     "attempt": 1,
+     "escalation": 0
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "failed record without error",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-2",
+    "data": {
+     "notification": "disk.falling",
+     "state": "failed",
+     "channel": "webpush",
+     "recipient": "contact://oncall/alice"
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "failed record with error",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-3",
+    "data": {
+     "notification": "disk.falling",
+     "state": "failed",
+     "channel": "apns",
+     "recipient": "contact://oncall/alice",
+     "error": "410 subscription gone"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "acknowledged with answer done and taken",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-4",
+    "data": {
+     "notification": "disk.falling",
+     "state": "acknowledged",
+     "channel": "webpush",
+     "recipient": "contact://oncall/alice",
+     "answer": "done",
+     "taken": 0
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "sent record with an answer",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-5",
+    "data": {
+     "notification": "disk.falling",
+     "state": "sent",
+     "channel": "webpush",
+     "recipient": "contact://oncall/alice",
+     "answer": "done"
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "taken without answer done",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-6",
+    "data": {
+     "notification": "disk.falling",
+     "state": "acknowledged",
+     "channel": "webpush",
+     "recipient": "contact://oncall/alice",
+     "answer": "open",
+     "taken": 1
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "recipient is an email address",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-7",
+    "data": {
+     "notification": "disk.falling",
+     "state": "sent",
+     "channel": "email",
+     "recipient": "alice@example.com"
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "unknown channel sms",
+   "schema": "envelope",
+   "document": {
+    "spec": "osa/0.5",
+    "source": "svc://notifier",
+    "time": "2026-11-23T09:41:03Z",
+    "topic": "notification.webpush",
+    "content_type": "application/vnd.osa.notification+json",
+    "correlation": {
+     "parent": "alert-7f2a"
+    },
+    "labels": {
+     "sensitivity": "metadata"
+    },
+    "id": "v05-8",
+    "data": {
+     "notification": "disk.falling",
+     "state": "sent",
+     "channel": "sms",
+     "recipient": "contact://oncall/alice"
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "manifest with delivery.notify: channels, rules, content, escalation",
+   "schema": "subscription",
+   "document": {
+    "subscriber": "oncall-phone",
+    "match": {
+     "topics": [
+      "alert.*"
+     ]
+    },
+    "delivery": {
+     "mode": "realtime",
+     "notify": {
+      "channels": [
+       {
+        "type": "webpush",
+        "recipient": "contact://oncall/alice"
+       }
+      ],
+      "when": {
+       "min_severity": "warning",
+       "states": [
+        "firing"
+       ],
+       "cooldown": "15m",
+       "max_per_hour": 20,
+       "quiet_hours": {
+        "start": "22:00",
+        "end": "07:00",
+        "tz": "Asia/Dubai",
+        "allow": "critical"
+       }
+      },
+      "content": {
+       "detail": "headline",
+       "with_advice": true
+      },
+      "escalate": {
+       "after": "10m",
+       "to": "contact://oncall/backup"
+      }
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "manifest channel with a raw device token",
+   "schema": "subscription",
+   "document": {
+    "subscriber": "oncall-phone",
+    "match": {
+     "topics": [
+      "alert.*"
+     ]
+    },
+    "delivery": {
+     "mode": "realtime",
+     "notify": {
+      "channels": [
+       {
+        "type": "apns",
+        "recipient": "contact://oncall/alice",
+        "token": "abc"
+       }
+      ]
+     }
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "manifest with no channels",
+   "schema": "subscription",
+   "document": {
+    "subscriber": "oncall-phone",
+    "match": {
+     "topics": [
+      "alert.*"
+     ]
+    },
+    "delivery": {
+     "mode": "realtime",
+     "notify": {
+      "channels": []
+     }
+    }
+   },
+   "valid": false
+  }
+ ],
+ "payload_cases": [
+  {
+   "name": "payload with title, body, envelope, advice and answers",
+   "document": {
+    "title": "Disk filling fast",
+    "body": "Free space fell 17 GB in 9 min on host-9",
+    "severity": "warning",
+    "state": "firing",
+    "envelope": "alert-7f2a",
+    "collapse_key": "k3f9a1",
+    "advice": {
+     "recommendation": "rec-alert-7f2a",
+     "action": "Clean the gradle cache",
+     "taken": 0
+    },
+    "answers": [
+     "done",
+     "dismissed"
+    ],
+    "url": "https://ops.example.com/a/alert-7f2a"
+   },
+   "valid": true
+  },
+  {
+   "name": "payload whose advice carries a command",
+   "document": {
+    "title": "Disk filling fast",
+    "body": "",
+    "envelope": "alert-7f2a",
+    "advice": {
+     "recommendation": "rec-alert-7f2a",
+     "action": "Clean the gradle cache",
+     "command": "rm -rf ~/.gradle/caches/build-cache-*"
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "payload title over 80 characters",
+   "document": {
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "body": "",
+    "envelope": "alert-7f2a"
+   },
+   "valid": false
+  }
+ ]
+}
