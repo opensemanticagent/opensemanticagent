@@ -73,6 +73,24 @@ class McpTest(unittest.TestCase):
         for k in ("metrics", "alert"):
             self.assertIn(k, tool("osa_get_schema", name=k)["structuredContent"]["$id"])
 
+    def test_v0_4_recommendation_cases(self):
+        fx = tool("osa_get_fixture", name="envelopes_v0_4")["structuredContent"]
+        self.assertGreaterEqual(len(fx["cases"]), 12)
+        for c in fx["cases"]:
+            r = tool("osa_validate", kind=c["schema"], document=c["document"])["structuredContent"]
+            self.assertEqual(r["valid"], c["valid"], (c["name"], r["errors"]))
+        for h in fx["handling"]:
+            self.assertTrue(spec.validate("envelope", h["envelope"])["valid"], h["name"])
+        open_rec = fx["cases"][0]["document"]["data"]
+        self.assertTrue(spec.validate("recommendation", open_rec)["valid"])
+        self.assertFalse(spec.validate("recommendation", {**open_rec, "taken": 0})["valid"])  # taken only when done
+
+    def test_v0_4_section_and_schema(self):
+        self.assertIn("Recommendations", tool("osa_get_section", section="6.11")["structuredContent"]["title"])
+        self.assertIn("recommendation", tool("osa_get_schema", name="recommendation")["structuredContent"]["$id"])
+        hits = tool("osa_search_spec", query="Never run by itself")["structuredContent"]
+        self.assertTrue(hits)
+
     def test_stdio(self):
         out = io.StringIO()
         mcp.serve(io.StringIO('{"jsonrpc":"2.0","id":1,"method":"ping"}\nnot json\n'), out)

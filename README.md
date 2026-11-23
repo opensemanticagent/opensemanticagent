@@ -38,7 +38,7 @@ Tools, all read-only: `osa_list_sections`, `osa_get_section`, `osa_search_spec`,
 
 | Path | What it is |
 |---|---|
-| `spec/SPEC.md` | The specification (0.3, draft) |
+| `spec/SPEC.md` | The specification (0.4, draft) |
 | `schemas/` | JSON Schemas for the envelope, subscription manifest, audit record and stream messages. Each `$id` resolves on the website. |
 | `conformance/fixtures/` | Routing test vectors that implementations run against |
 | `osa/`, `tests/` | The MCP server and its tests. The package bundles the spec, schemas and fixtures. |

@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensemanticagent.org/schemas/recommendation.schema.json",
+  "title": "Open Semantic Agent Recommendation Data (SPEC 0.4 §6.11)",
+  "description": "The data of an envelope whose content_type is application/vnd.osa.recommendation+json",
+  "type": "object",
+  "required": [
+    "recommendation",
+    "state"
+  ],
+  "properties": {
+    "recommendation": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$"
+    },
+    "state": {
+      "enum": [
+        "open",
+        "done",
+        "dismissed",
+        "expired"
+      ]
+    },
+    "for": {
+      "type": "string",
+      "minLength": 1
+    },
+    "severity": {
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ]
+    },
+    "why": {
+      "type": "string"
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_effect": {
+            "type": "string"
+          },
+          "effort": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "reversible": {
+            "enum": [
+              "yes",
+              "partly",
+              "no"
+            ]
+          },
+          "undo": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "generated_by": {
+      "enum": [
+        "rule",
+        "model",
+        "person"
+      ]
+    },
+    "model": {
+      "type": "string"
+    },
+    "taken": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "open"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "actions"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "taken"
+        ]
+      },
+      "then": {
+        "properties": {
+          "state": {
+            "const": "done"
+          }
+        }
+      }
+    }
+  ]
+}

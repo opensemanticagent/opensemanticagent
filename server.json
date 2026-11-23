@@ -5,12 +5,12 @@
   "description": "Read the Open Semantic Agent pub/sub spec, get its schemas and fixtures, and validate documents.",
   "repository": { "url": "https://github.com/opensemanticagent/opensemanticagent", "source": "github" },
   "websiteUrl": "https://opensemanticagent.org/",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "open-semantic-agent",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "runtimeHint": "uvx",
       "transport": { "type": "stdio" }
     }

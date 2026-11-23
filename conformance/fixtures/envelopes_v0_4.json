@@ -1,0 +1,507 @@
+{
+  "name": "envelopes_v0_4",
+  "spec": "osa/0.4",
+  "description": "OSA 0.4 draft: schema cases for recommendations (§6.11), checked through the envelope schema, and handling cases with the expected behaviour.",
+  "cases": [
+    {
+      "name": "open recommendation with ranked actions, evidence and provenance",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-1",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [
+            {
+              "action": "Pause the running build",
+              "expected_effect": "about 2 cores less",
+              "effort": "low",
+              "reversible": "yes"
+            },
+            {
+              "action": "Unload the idle local model",
+              "expected_effect": "frees its memory and GPU",
+              "effort": "low",
+              "reversible": "yes",
+              "undo": "it reloads on next use",
+              "command": "ollama stop gemma3"
+            },
+            {
+              "action": "Plug in the charger",
+              "expected_effect": "stops the drain",
+              "effort": "low",
+              "reversible": "yes"
+            }
+          ],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "open recommendation without actions",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-2",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "open recommendation with an empty action list",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-3",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "action without action text",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-4",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [
+            {
+              "effort": "low"
+            }
+          ],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "effort outside low, medium, high",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-5",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [
+            {
+              "action": "x",
+              "effort": "trivial"
+            }
+          ],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "reversible outside yes, partly, no",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-6",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [
+            {
+              "action": "x",
+              "reversible": "maybe"
+            }
+          ],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "done with the action taken, parent is the open recommendation",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-7",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "v04-1"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "done",
+          "taken": 1
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "dismissed with taken",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-8",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "v04-1"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "dismissed",
+          "taken": 0
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "expired without actions",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-9",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "v04-1"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "expired"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "advice from a model, named",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-10",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [
+            {
+              "action": "Pause the running build",
+              "expected_effect": "about 2 cores less",
+              "effort": "low",
+              "reversible": "yes"
+            },
+            {
+              "action": "Unload the idle local model",
+              "expected_effect": "frees its memory and GPU",
+              "effort": "low",
+              "reversible": "yes",
+              "undo": "it reloads on next use",
+              "command": "ollama stop gemma3"
+            },
+            {
+              "action": "Plug in the charger",
+              "expected_effect": "stops the drain",
+              "effort": "low",
+              "reversible": "yes"
+            }
+          ],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "model",
+          "model": "example-model-1"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "unknown state",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-11",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "accepted",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [
+            {
+              "action": "Pause the running build",
+              "expected_effect": "about 2 cores less",
+              "effort": "low",
+              "reversible": "yes"
+            },
+            {
+              "action": "Unload the idle local model",
+              "expected_effect": "frees its memory and GPU",
+              "effort": "low",
+              "reversible": "yes",
+              "undo": "it reloads on next use",
+              "command": "ollama stop gemma3"
+            },
+            {
+              "action": "Plug in the charger",
+              "expected_effect": "stops the drain",
+              "effort": "low",
+              "reversible": "yes"
+            }
+          ],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "negative taken",
+      "schema": "envelope",
+      "document": {
+        "spec": "osa/0.4",
+        "id": "v04-12",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "v04-1"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "done",
+          "taken": -1
+        }
+      },
+      "valid": false
+    }
+  ],
+  "handling": [
+    {
+      "name": "a command is shown, never run without a person",
+      "envelope": {
+        "spec": "osa/0.4",
+        "id": "v04-13",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "alert-7f2a"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "open",
+          "for": "laptop-3/thermal",
+          "severity": "warning",
+          "why": "On battery; one build process drives most of the load.",
+          "actions": [
+            {
+              "action": "Pause the running build",
+              "expected_effect": "about 2 cores less",
+              "effort": "low",
+              "reversible": "yes"
+            },
+            {
+              "action": "Unload the idle local model",
+              "expected_effect": "frees its memory and GPU",
+              "effort": "low",
+              "reversible": "yes",
+              "undo": "it reloads on next use",
+              "command": "ollama stop gemma3"
+            },
+            {
+              "action": "Plug in the charger",
+              "expected_effect": "stops the drain",
+              "effort": "low",
+              "reversible": "yes"
+            }
+          ],
+          "evidence": [
+            "alert-7f2a"
+          ],
+          "generated_by": "rule"
+        }
+      },
+      "expect": {
+        "execute_without_confirmation": false
+      }
+    },
+    {
+      "name": "a later state ends the open recommendation",
+      "envelope": {
+        "spec": "osa/0.4",
+        "id": "v04-14",
+        "source": "device://laptop-3",
+        "time": "2026-11-22T09:21:05Z",
+        "topic": "recommendation.thermal.throttling",
+        "content_type": "application/vnd.osa.recommendation+json",
+        "correlation": {
+          "parent": "v04-1"
+        },
+        "labels": {
+          "sensitivity": "metadata"
+        },
+        "data": {
+          "recommendation": "thermal.throttling",
+          "state": "dismissed"
+        }
+      },
+      "expect": {
+        "offer": false,
+        "ends": "v04-1"
+      }
+    }
+  ]
+}

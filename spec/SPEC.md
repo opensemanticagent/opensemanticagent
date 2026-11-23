@@ -1,6 +1,6 @@
 # Open Semantic Agent (OSA) Specification
 
-**Version:** 0.3 (draft) · **Status:** RFC · **License:** Apache-2.0 · **Website:** https://opensemanticagent.org
+**Version:** 0.4 (draft) · **Status:** RFC · **License:** Apache-2.0 · **Website:** https://opensemanticagent.org
 
 The key words MUST, SHOULD and MAY are used as in RFC 2119.
 
@@ -31,6 +31,7 @@ An OSA bus does not replace durable storage or ordering. Those stay the transpor
 | **Subject** | What an envelope is about, when that differs from its producer (§3, 0.3) |
 | **Sample** | One numeric measurement inside a metrics envelope (§6.9, 0.3) |
 | **Alert** | An envelope that opens or closes a condition someone should act on (§6.10, 0.3) |
+| **Recommendation** | An envelope with ranked advice for a condition, linked to the envelope it answers (§6.11, 0.4) |
 
 ## 3. Envelope
 
@@ -216,6 +217,48 @@ An alert opens or closes a condition someone should act on: `content_type: "appl
 - At most one condition is open per `dedupe_key`. A repeated `firing` envelope for an open key updates it; consumers SHOULD show it once. A `resolved` envelope MUST carry the same `dedupe_key`.
 - Alerts SHOULD use topics `alert.<kind>`, so subscriptions can take them at Tier 0. An alert about a safety limit SHOULD carry `hints.strict: true` (Appendix A.2), so its delivery never depends on a model or a budget.
 
+### 6.11 Recommendations (OPTIONAL, 0.4)
+A recommendation is advice about a condition: `content_type: "application/vnd.osa.recommendation+json"`, with `data` shaped as `schemas/recommendation.schema.json`. It answers one envelope, usually a firing alert (§6.10), and names it in `correlation.parent`.
+
+```json
+{
+  "spec": "osa/0.4",
+  "id": "rec-alert-7f2a",
+  "topic": "recommendation.thermal.throttling",
+  "source": "device://laptop-3",
+  "subject": "device://laptop-3",
+  "time": "2026-11-22T09:21:05Z",
+  "content_type": "application/vnd.osa.recommendation+json",
+  "correlation": { "parent": "alert-7f2a" },
+  "labels": { "sensitivity": "metadata" },
+  "data": {
+    "recommendation": "thermal.throttling",
+    "state": "open",
+    "for": "laptop-3/thermal",
+    "severity": "warning",
+    "why": "On battery; one build process drives most of the load.",
+    "actions": [
+      { "action": "Pause the running build", "expected_effect": "about 2 cores less; the chip cools within minutes",
+        "effort": "low", "reversible": "yes" },
+      { "action": "Unload the idle local model", "expected_effect": "frees its memory and GPU",
+        "effort": "low", "reversible": "yes", "undo": "it reloads on next use", "command": "ollama stop gemma3" },
+      { "action": "Plug in the charger", "expected_effect": "stops the drain", "effort": "low", "reversible": "yes" }
+    ],
+    "evidence": ["alert-7f2a", "laptop-3-1764150240"],
+    "generated_by": "rule"
+  }
+}
+```
+
+- **Fields.** `recommendation` (the kind of condition, normally the alert name) and `state` are REQUIRED. An `open` recommendation MUST have `actions` with at least one item; each action MUST have `action` (what to do, in plain words) and MAY have `expected_effect`, `effort` (`low`, `medium`, `high`), `reversible` (`yes`, `partly`, `no`), `undo` (how to reverse it) and `command` (text to copy). `for` MAY carry the `dedupe_key` of the alert it answers.
+- **Order.** `actions` MUST be listed best first. Publishers SHOULD rank cheaper and reversible actions above costly or irreversible ones unless they have evidence that another action works better for this condition, such as earlier outcomes (below).
+- **Evidence.** `evidence` SHOULD list the ids of the envelopes the advice is based on, including the parent.
+- **Provenance.** `generated_by` SHOULD be `rule`, `model` or `person`. Advice from a model SHOULD also name it in `model`. Consumers MAY show or filter advice by provenance.
+- **Topics.** Recommendations SHOULD use topics `recommendation.<kind>`, so subscriptions can take them at Tier 0.
+- **Lifecycle.** `state` is `open`, `done`, `dismissed` or `expired`. A change of state is a new envelope on the same topic whose `correlation.parent` is the id of the open recommendation. A `done` envelope SHOULD carry `taken`, the zero-based index of the action that was taken; `taken` MUST NOT appear in any other state. When the condition behind an open recommendation resolves, the publisher MAY publish `expired`. Consumers SHOULD stop offering a recommendation once any later state for it arrives.
+- **Never run by itself.** A consumer MUST NOT execute an action or `command` without a person's confirmation for that action. A `command` is text to show and copy; publishers MUST NOT put credentials or secrets in it.
+- **Sensitivity.** A recommendation whose `why`, actions or commands quote content (prompts, documents, tool arguments or output) MUST carry `labels.sensitivity: "content"` (§3).
+
 ## 7. Adapter interfaces
 
 Language-neutral pseudo-signatures:
@@ -274,7 +317,7 @@ Implementations SHOULD also expose `consume(subscriber, n)` for pull delivery (0
 
 **Read-only query tools (OPTIONAL, 0.3)**
 Agents often need to look back, not only subscribe forward: what happened in the last hour, how a number moved. An implementation MAY offer:
-- `history(topics, since, until, limit, subject)` returns stored envelopes whose topic matches any of the Tier 0 `topics` patterns (§5), newest first. `subject`, when given, matches the envelope's `subject` or a URI under it. Results MUST get the same clearance and redaction (§6.8) a delivery to the caller would get. Envelopes marked `secret` (§3) MUST NOT be returned. Alerts (§6.10) are read as `history(["alert.*"], ...)`.
+- `history(topics, since, until, limit, subject)` returns stored envelopes whose topic matches any of the Tier 0 `topics` patterns (§5), newest first. `subject`, when given, matches the envelope's `subject` or a URI under it. Results MUST get the same clearance and redaction (§6.8) a delivery to the caller would get. Envelopes marked `secret` (§3) MUST NOT be returned. Alerts (§6.10) are read as `history(["alert.*"], ...)`, recommendations (§6.11) as `history(["recommendation.*"], ...)`.
 - `metrics_query(metric, subject, since, until, step, aggregation)` returns metrics over time as rollup envelopes (§6.9): `data.window` is `step`, and each sample carries `aggregation` (default `avg`). An implementation MAY answer from stored rollups after retention has removed the raw samples, and MUST then report the coarser `window` it actually used.
 
 Both tools only read. Any conformance level, including L0, MAY offer them. An L0 implementation that exposes MCP MAY offer only these two tools.
@@ -347,7 +390,7 @@ Phones sleep and change networks, so at-most-once streams lose items that were h
 | **L1 Semantic** | L0 + Tier 1, §6.1, §6.3, §9.1 |
 | **L2 Agentic** | L1 + Tier 2, §6.2, §6.4–6.7 |
 
-Metrics (§6.9), alerts (§6.10), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.
+Metrics (§6.9), alerts (§6.10), recommendations (§6.11), stream resume (§9.3) and the read-only query tools (§9.1) are OPTIONAL at every level. An implementation that offers one MUST follow it as written. Tool annotations (§9.1) apply to every MCP tool an implementation exposes, at any level.
 
 The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, manifests and expected decisions. Implementations measure routing precision and recall against them per model and provider, and publish their results; `IMPLEMENTATIONS.md` lists them.
 
@@ -358,10 +401,15 @@ The conformance fixtures (`conformance/fixtures/`) publish fixed envelopes, mani
 - **Cost abuse:** budgets are enforced per subscriber and per publisher.
 - **Repairs** are proposals until they are validated. Only one automatic retry is allowed (§6.5).
 - **Sensitive payloads:** publishers SHOULD mark prompts, documents and tool input and output as `content`, and credentials as `secret` (§3), so they stay out of model paths and summaries by default.
+- **Advice:** recommendations (§6.11) are proposals. Consumers never run an action or command without a person's confirmation, and agents that read recommendations treat them as data, not instructions.
 
 ## 12. Versioning
 
 `spec` in the envelope follows `osa/<major>.<minor>`. A minor version only adds features. A major version may break compatibility and requires a migration note.
+
+### Changes in 0.4
+All additive. Implementations MUST accept `osa/0.1` to `osa/0.4` envelopes.
+- §6.11: recommendations linked to the envelope they answer, with ranked actions, evidence, provenance and a lifecycle (`schemas/recommendation.schema.json`).
 
 ### Changes in 0.3
 All additive. Implementations MUST accept `osa/0.1`, `osa/0.2` and `osa/0.3` envelopes.
